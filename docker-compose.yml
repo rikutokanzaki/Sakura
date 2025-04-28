@@ -1,0 +1,27 @@
+services:
+  reverse-proxy:
+    build: ./reverse-proxy
+    ports:
+      - "80:80"
+      - "22:22"
+    depends_on:
+      - app
+    env_file:
+      - .env
+    volumes:
+      - ./reverse-proxy/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
+      - ./reverse-proxy/conf.d:/usr/local/openresty/nginx/conf/conf.d
+      - ./reverse-proxy/lua/detect.lua:/usr/local/openresty/nginx/lua/detect.lua
+      - ./logs/reverse-proxy:/var/log/nginx
+
+  app:
+    build: ./app
+    volumes:
+      - ./app/src:/usr/share/nginx/html
+      - ./logs/app:/var/log/nginx
+
+  http-honeypot:
+    build: ./honeypots
+    volumes:
+      - ./honeypots/src:/usr/share/nginx/html
+      - ./logs/honeypots:/var/log/nginx

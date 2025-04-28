@@ -1,0 +1,29 @@
+local httpc = require("resty.http").new()
+
+local uri = (ngx.var.request_uri or ""):lower()
+local ua  = (ngx.var.http_user_agent or ""):lower()
+
+local patterns = {
+  "union", "select", "or 1=1", "wp_login%.php",
+  "%.%.%/", "/etc/passwd", "cmd%.exe",
+  "sqlmap", "curl", "python", "masscan", "nmap"
+}
+
+for _, p in ipairs(patterns) do
+  if uri:find(p, 1, true) or ua:find(p, 1, true) then
+    -- 通知送信
+    local host_ip = os.getenv("HOST_IP")
+    local launcher_port = "5001"
+    local launcher_address = "http://" .. host_ip .. ":" .. launcher_port .. "/trigger"
+    local res, err = httpc:request_uri(launcher_address, {
+      method = "POST",
+    })
+
+    if not res then
+      ngx.log(ngx.ERR, "failed to trigger: ", err)
+    end
+
+    -- honeypotにリダイレクト
+    return ngx.exec("@honeypot")
+  end
+end
