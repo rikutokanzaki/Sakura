@@ -25,3 +25,13 @@ services:
     volumes:
       - ./honeypots/src:/usr/share/nginx/html
       - ./logs/honeypots:/var/log/nginx
+
+  ssh-honeypot:
+    image: cowrie/cowrie
+    ports:
+      - "2222:2222"
+      - "2223:2223"
+    environment:
+      - COWRIE_TTYLOG_ENABLED=yes
+    volumes:
+      - ./logs/cowrie:/cowrie/var/log/cowrie

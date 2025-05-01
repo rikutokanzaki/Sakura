@@ -14,7 +14,7 @@ for _, p in ipairs(patterns) do
     -- 通知送信
     local host_ip = os.getenv("HOST_IP")
     local launcher_port = "5001"
-    local launcher_address = "http://" .. host_ip .. ":" .. launcher_port .. "/trigger"
+    local launcher_address = "http://" .. host_ip .. ":" .. launcher_port .. "/trigger/http"
     local res, err = httpc:request_uri(launcher_address, {
       method = "POST",
     })
