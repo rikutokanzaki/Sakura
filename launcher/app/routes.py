@@ -11,14 +11,14 @@ def trigger_http():
     if not docker_manager.is_service_running("http-honeypot"):
       docker_manager.unpause_service("http-honeypot")
   
-  return "Triggered", 200
+  return "HTTP Honeypot Triggered", 200
 
 @bp.route('/trigger/ssh', methods=['POST'])
 def trigger_ssh():
   session_manager.update_session()
 
   with session_manager.pause_lock:
-    if not docker_manager.is_service_running("http-honeypot"):
-      docker_manager.unpause_service("http-honeypot")
+    if not docker_manager.is_service_running("ssh-honeypot"):
+      docker_manager.unpause_service("ssh-honeypot")
   
-  return "Triggered", 200
+  return "SSH Honeypot Triggered", 200
