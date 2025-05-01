@@ -11,7 +11,6 @@ local patterns = {
 
 for _, p in ipairs(patterns) do
   if uri:find(p, 1, true) or ua:find(p, 1, true) then
-    -- 通知送信
     local host_ip = os.getenv("HOST_IP")
     local launcher_port = "5001"
     local launcher_address = "http://" .. host_ip .. ":" .. launcher_port .. "/trigger/http"
@@ -23,7 +22,6 @@ for _, p in ipairs(patterns) do
       ngx.log(ngx.ERR, "failed to trigger: ", err)
     end
 
-    -- honeypotにリダイレクト
     return ngx.exec("@honeypot")
   end
 end
