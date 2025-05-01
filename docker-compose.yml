@@ -11,7 +11,8 @@ services:
     volumes:
       - ./reverse-proxy/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
       - ./reverse-proxy/conf.d:/usr/local/openresty/nginx/conf/conf.d
-      - ./reverse-proxy/lua/detect.lua:/usr/local/openresty/nginx/lua/detect.lua
+      - ./reverse-proxy/lua/detect_http.lua:/usr/local/openresty/nginx/lua/detect_http.lua
+      - ./reverse-proxy/lua/detect_ssh.lua:/usr/local/openresty/nginx/lua/detect_ssh.lua
       - ./logs/reverse-proxy:/var/log/nginx
 
   app:
@@ -30,7 +31,6 @@ services:
     image: cowrie/cowrie
     ports:
       - "2222:2222"
-      - "2223:2223"
     environment:
       - COWRIE_TTYLOG_ENABLED=yes
     volumes:

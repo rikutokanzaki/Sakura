@@ -5,9 +5,9 @@ bp = Blueprint('main', __name__)
 
 @bp.route('/trigger/http', methods=['POST'])
 def trigger_http():
-  session_manager.update_session()
+  session_manager.update_session("http-honeypot")
 
-  with session_manager.pause_lock:
+  with session_manager._services["http-honeypot"].pause_lock:
     if not docker_manager.is_service_running("http-honeypot"):
       docker_manager.unpause_service("http-honeypot")
   
@@ -15,9 +15,9 @@ def trigger_http():
 
 @bp.route('/trigger/ssh', methods=['POST'])
 def trigger_ssh():
-  session_manager.update_session()
+  session_manager.update_session("ssh-honeypot")
 
-  with session_manager.pause_lock:
+  with session_manager._services["ssh-honeypot"].pause_lock:
     if not docker_manager.is_service_running("ssh-honeypot"):
       docker_manager.unpause_service("ssh-honeypot")
   

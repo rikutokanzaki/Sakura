@@ -3,13 +3,13 @@ local httpc = require("resty.http").new()
 local uri = (ngx.var.request_uri or ""):lower()
 local ua  = (ngx.var.http_user_agent or ""):lower()
 
-local patterns = {
+local http_patterns = {
   "union", "select", "or 1=1", "wp_login%.php",
   "%.%.%/", "/etc/passwd", "cmd%.exe",
   "sqlmap", "curl", "python", "masscan", "nmap"
 }
 
-for _, p in ipairs(patterns) do
+for _, p in ipairs(http_patterns) do
   if uri:find(p, 1, true) or ua:find(p, 1, true) then
     local host_ip = os.getenv("HOST_IP")
     local launcher_port = "5001"
@@ -22,6 +22,6 @@ for _, p in ipairs(patterns) do
       ngx.log(ngx.ERR, "failed to trigger: ", err)
     end
 
-    return ngx.exec("@honeypot")
+    return ngx.exec("@honeypot_http")
   end
 end
