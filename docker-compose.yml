@@ -1,5 +1,6 @@
 services:
   reverse-proxy:
+    container_name: reverse-proxy
     build: ./reverse-proxy
     ports:
       - "80:80"
@@ -16,25 +17,36 @@ services:
       - ${SAKURA_DATA_PATH}/reverse-proxy:/var/log/nginx
 
   app:
+    container_name: app
     build: ./app
     volumes:
       - ./app/src:/usr/share/nginx/html
       - ${SAKURA_DATA_PATH}/app:/var/log/nginx
 
   http-honeypot:
+    container_name: http-honeypot
     build: ./honeypots
     volumes:
       - ./honeypots/src:/usr/share/nginx/html
       - ${SAKURA_DATA_PATH}/honeypots:/var/log/nginx
 
   ssh-honeypot:
+    container_name: ssh-honeypot
     image: cowrie/cowrie
     ports:
       - "2222:2222"
-    environment:
-      - COWRIE_TTYLOG_ENABLED=yes
     volumes:
       - ${SAKURA_DATA_PATH}/cowrie:/cowrie/var/log/cowrie
+    environment:
+      - COWRIE_TTYLOG_ENABLED=yes
+  
+  
+  launcher:
+    container_name: launcher
+    build: ./launcher
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
 
   ##################
   ### ELK
