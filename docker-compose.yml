@@ -1,4 +1,8 @@
 services:
+
+  ####################################
+  ### Reverse Proxy
+  ####################################
   reverse-proxy:
     container_name: reverse-proxy
     build: ./reverse-proxy
@@ -16,13 +20,31 @@ services:
       - ./reverse-proxy/lua/detect_ssh.lua:/usr/local/openresty/nginx/lua/detect_ssh.lua
       - ${SAKURA_DATA_PATH}/reverse-proxy:/var/log/nginx
 
+
+  ####################################
+  ### Real System
+  ####################################
   app:
     container_name: app
     build: ./app
     volumes:
       - ./app/src:/usr/share/nginx/html
       - ${SAKURA_DATA_PATH}/app:/var/log/nginx
+  
 
+  ####################################
+  ### Launcher
+  ####################################
+  launcher:
+    container_name: launcher
+    build: ./launcher
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+
+  ####################################
+  ### Honeypots
+  ####################################
   http-honeypot:
     container_name: http-honeypot
     build: ./honeypots
@@ -39,19 +61,13 @@ services:
       - ${SAKURA_DATA_PATH}/cowrie:/cowrie/var/log/cowrie
     environment:
       - COWRIE_TTYLOG_ENABLED=yes
-  
-  
-  launcher:
-    container_name: launcher
-    build: ./launcher
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
 
-  ##################
-  ### ELK
-  ##################
+  ####################################
+  ### Elastic Stack
+  ####################################
   setup:
+    container_name: setup
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
@@ -109,6 +125,7 @@ services:
       retries: 120
 
   elasticsearch:
+    container_name: elasticsearch
     depends_on:
       setup:
         condition: service_healthy
@@ -151,6 +168,7 @@ services:
       retries: 120
 
   kibana:
+    container_name: kibana
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -180,6 +198,7 @@ services:
       retries: 120
 
   metricbeat:
+    container_name: metricbeat
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -204,6 +223,7 @@ services:
       - elastic
 
   logstash:
+    container_name: logstash
     depends_on:
       elasticsearch:
         condition: service_healthy
