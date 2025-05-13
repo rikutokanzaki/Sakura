@@ -39,7 +39,7 @@ services:
     container_name: launcher
     build: ./launcher
     ports:
-      - "5001:5001"
+      - "127.0.0.1:5001:5001"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
