@@ -38,6 +38,8 @@ services:
   launcher:
     container_name: launcher
     build: ./launcher
+    ports:
+      - "5001:5001"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
@@ -52,13 +54,13 @@ services:
       - ./honeypots/src:/usr/share/nginx/html
       - ${SAKURA_DATA_PATH}/honeypots:/var/log/nginx
 
-  ssh-honeypot:
-    container_name: ssh-honeypot
+  cowrie:
+    container_name: cowrie
     image: cowrie/cowrie
     ports:
       - "2222:2222"
     volumes:
-      - ${SAKURA_DATA_PATH}/cowrie:/cowrie/var/log/cowrie
+      - ${SAKURA_DATA_PATH}/cowrie:/cowrie/cowrie-git/var/log/cowrie
     environment:
       - COWRIE_TTYLOG_ENABLED=yes
 
