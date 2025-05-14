@@ -30,8 +30,8 @@ def trigger_http():
   
   return "HTTP Honeypot Triggered", 200
 
-@bp.route('/trigger/ssh', methods=['POST'])
-def trigger_ssh():
+@bp.route('/trigger/cowrie', methods=['POST'])
+def trigger_cowrie():
   session_manager.update_session("cowrie")
 
   with session_manager._services["cowrie"].pause_lock:

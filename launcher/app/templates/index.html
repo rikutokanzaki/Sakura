@@ -172,14 +172,9 @@
       const honeypotSelect = document.getElementById('honeypotSelect');
 
       launchButton.addEventListener('click', () => {
-        let protocol = "";
         const selectedHoneypot = honeypotSelect.value;
 
-        if (selectedHoneypot === "cowrie") {
-          protocol = 'ssh';
-        }
-
-        fetch(`/trigger/${protocol}`, {
+        fetch(`/trigger/${selectedHoneypot}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
