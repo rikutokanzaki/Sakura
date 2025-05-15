@@ -3,7 +3,7 @@ from app.controller import docker_manager, session_manager
 import os
 import json
 
-bp = Blueprint('main', __name__, static_url_path='/static', static_folder='static')
+bp = Blueprint('main', __name__)
 
 @bp.route('/')
 def index():
