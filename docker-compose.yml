@@ -44,7 +44,7 @@ services:
       - .env
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - ${SAKURA_DATA_PATH}:/static/data
+      - ${SAKURA_DATA_PATH}:/data
 
 
   ####################################

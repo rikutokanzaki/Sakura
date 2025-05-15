@@ -3,85 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    * {
-        padding: 0;
-        margin: 0;
-    }
-
-    body {
-      min-height: 100vh;
-    }
-
-    .title {
-      padding: 20px 0 0 40px;
-    }
-
-    .launchHoneypot {
-      margin: 40px auto;
-      width: 80%;
-      max-width: 800px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .dropdown {
-      margin: 0 3%;
-      padding: 0 15px;
-      width: 30%;
-      height: 30px;
-      border: none;
-      border-radius: 10px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-      cursor: pointer;
-    }
-
-    .dropdown:focus {
-      outline: none;
-    }
-
-    .launchButton {
-      padding: 10px 15px;
-      margin: 20px 0;
-      font-size: clamp(0.4rem, calc(0.6rem + 1.2vw), 1.2rem);
-      background-color: #2faf87;
-      border: none;
-      border-radius: 8px;
-      box-shadow: 0 3px 5px rgba(0, 0, 0, 0.35);
-      color: #fff;
-      cursor: pointer;
-    }
-
-    .launchButton:active {
-      background-color: #fff;
-      color: #2faf87;
-    }
-
-    .logControls {
-      margin: 0 0 20px 5%;
-      width: 40%;
-    }
-
-    .table-wrap {
-      overflow-x: scroll;
-    }
-    .logTable {
-      width: 100%;
-      border-collapse: collapse;
-      white-space: nowrap;
-    }
-    .logTable th,
-    .logTable td {
-      border: 2px solid #eee;
-      padding: 4px 8px;
-    }
-  </style>
+  <link rel="stylesheet" href="/static/style.css">
   <title>Sakura launcher</title>
 </head>
 
 <body>
-
   <div class="titleSection">
     <h1 class="title">Sakura launcher</h1>
   </div>
@@ -112,92 +38,7 @@
       </table>
     </div>
   </div>
-
-  <script>
-    let logs = [];
-
-    function renderLogs(logCount) {
-      const table = document.querySelector('.honeypotLogs .logTable');
-      if (logs.length === 0) return;
-
-      const allKeysSet = new Set();
-      logs.forEach(log => {
-        Object.keys(log).forEach(key => allKeysSet.add(key));
-      });
-
-      const preferredOrder = ['timestamp', 'src_ip', 'src_port', 'protocol', 'message', 'duration', 'username', 'password'];
-      const otherKeys = [...allKeysSet].filter(key => !preferredOrder.includes(key)).sort();
-      const resultKeys = [...preferredOrder, ...otherKeys];
-
-      let headerRow = '<tr>';
-      resultKeys.forEach(key => {
-        headerRow += `<th>${key}</th>`;
-      });
-      headerRow += '</tr>';
-      table.innerHTML = headerRow;
-
-      let displayLogs;
-      if (logCount === 'all') {
-        displayLogs = logs;
-      } else {
-        const n = parseInt(logCount);
-        displayLogs = logs.slice(-n);
-      }
-
-      displayLogs.forEach(log => {
-        const row = document.createElement('tr');
-        row.innerHTML = resultKeys.map(key => `<td>${log[key] ?? ''}</td>`).join('');
-        table.appendChild(row);
-      });
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      fetch('api/logs/cowrie')
-        .then(response => response.json())
-        .then(data => {
-          logs = data;
-
-          renderLogs('10');
-
-          const logCountSelect = document.getElementById('logCountSelect');
-          logCountSelect.addEventListener('change', (e) => {
-            renderLogs(e.target.value);
-          });
-        })
-        .catch(error => {
-          console.error('Failed to load logs:', error);
-        });
-
-      const launchButton = document.querySelector('.launchButton');
-      const honeypotSelect = document.getElementById('honeypotSelect');
-
-      launchButton.addEventListener('click', () => {
-        const selectedHoneypot = honeypotSelect.value;
-
-        fetch(`/trigger/${selectedHoneypot}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ honeypot: selectedHoneypot })
-        })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Failed to launch honeypot');
-          }
-          return response.text();
-        })
-        .then(data => {
-          console.log('Succeed to launch honeypot:', data);
-          alert(`Request to launch ${selectedHoneypot} has been sent.`);
-        })
-        .catch(error => {
-          console.error('Launch error:', error);
-          alert(`error: ${error.message}`);
-        });
-      });
-    });
-  </script>
-
+  
+  <script src="/static/main.js"></script>
 </body>
 </html>

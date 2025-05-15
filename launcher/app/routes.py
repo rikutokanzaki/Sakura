@@ -38,7 +38,7 @@ def index():
 
 @bp.route('/api/logs/cowrie', methods=['GET'])
 def get_cowrie_logs():
-  file_path = os.path.join(os.path.dirname(__file__), '../static/data/cowrie/cowrie.json')
+  file_path = os.path.join(os.path.dirname(__file__), '../data/cowrie/cowrie.json')
 
   try:
     with open(file_path, 'r', encoding='utf-8') as f:
