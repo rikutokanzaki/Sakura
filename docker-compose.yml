@@ -40,6 +40,8 @@ services:
     build: ./launcher
     ports:
       - "127.0.0.1:5000:5000"
+    env_file:
+      - .env
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - ${SAKURA_DATA_PATH}:/static/data
