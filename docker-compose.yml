@@ -60,8 +60,6 @@ services:
   cowrie:
     container_name: cowrie
     image: cowrie/cowrie
-    ports:
-      - "2222:2222"
     volumes:
       - ${SAKURA_DATA_PATH}/cowrie:/cowrie/cowrie-git/var/log/cowrie
     environment:
