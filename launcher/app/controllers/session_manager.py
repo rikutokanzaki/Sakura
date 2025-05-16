@@ -8,8 +8,8 @@ _services = {}
 _services_lock = threading.Lock()
 
 class ServiceSession:
-  def __init__(self, service_name):
-    self.service_name = service_name
+  def __init__(self, service_name, linked_services=None):
+    self.service_names = [service_name] + (linked_services or [])
     self._last_trigger_time = time.time()
     self._session_active = threading.Event()
     self._stop_observer = threading.Event()
@@ -41,22 +41,29 @@ class ServiceSession:
         continue
 
       with self.pause_lock:
-        if docker_manager.is_service_running(self.service_name):
-          print(f"[INFO] Pausing {self.service_name} due to session timeout.")
-          docker_manager.pause_service(self.service_name)
+        running_services = [s for s in self.service_names if docker_manager.is_service_running(s)]
+        if running_services:
+          print(f"[INFO] Pausing {running_services} due to session timeout.")
+          docker_manager.pause_services(running_services)
         else:
-          print(f"[INFO] {self.service_name} is already paused.")
+          print(f"[INFO] Services already paused: {self.service_names}")
 
-      print(f"[INFO] Waiting for new session to reactive for {self.service_name}...")
+      print(f"[INFO] Waiting for new session to reactive for {self.service_names}...")
       self._session_active.wait()
   
 def update_session(service_name: str):
+  linked_map = {
+    "snare": ["tanner_redis", "tanner_phpox", "tanner_api", "tanner"]
+  }
+
   with _services_lock:
     if service_name not in _services:
-      print(f"[INFO] Creating session tracker for service: {service_name}")
-      _services[service_name] = ServiceSession(service_name)
+      linked = linked_map.get(service_name, [])
+      print(f"[INFO] Creating session tracker for service: {service_name} with linked: {linked}")
+      _services[service_name] = ServiceSession(service_name, linked_services=linked)
 
     _services[service_name].update()
+
 
 def is_session_active(service_name: str):
   with _services_lock:

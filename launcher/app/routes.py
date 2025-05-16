@@ -63,12 +63,11 @@ def get_cowrie_logs():
     return jsonify({'error': 'cowrie.json not found'}), 404
 
 @bp.route('/trigger/snare', methods=['POST'])
-def trigger_http():
+def trigger_snare():
   session_manager.update_session("snare")
 
   with session_manager._services["snare"].pause_lock:
-    if not docker_manager.is_service_running("snare"):
-      docker_manager.unpause_service("snare")
+      docker_manager.unpause_services(["snare","tanner_redis", "tanner_phpox", "tanner_api", "tanner"])
   
   return "HTTP Honeypot Triggered", 200
 
@@ -78,7 +77,7 @@ def trigger_cowrie():
 
   with session_manager._services["cowrie"].pause_lock:
     if not docker_manager.is_service_running("cowrie"):
-      docker_manager.unpause_service("cowrie")
+      docker_manager.unpause_services(["cowrie"])
   
   return "SSH Honeypot Triggered", 200
 

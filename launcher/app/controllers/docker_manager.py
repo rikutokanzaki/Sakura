@@ -5,6 +5,10 @@ import docker
 MAX_WAIT_SECONDS = 10
 client = docker.from_env()
 
+LINKED_SERVICES = {
+  "snare": ["snare", "tanner_redis", "tanner_phpox", "tanner_api", "tanner"],
+}
+
 def is_service_running(service_name):
   running_services = []
   for container in client.containers.list():
@@ -15,44 +19,46 @@ def is_service_running(service_name):
 
   return service_name in running_services
 
-def pause_service(service_name):
-  if not is_service_running(service_name):
-    print(f"[INFO] {service_name} is already paused.")
-    return False
+def pause_services(service_names):
+  for name in service_names:
+    if not is_service_running(name):
+      print(f"[INFO] {name} is already paused.")
+      continue
 
-  print(f"[INFO] Pausing {service_name}...")
-  container = client.containers.get(service_name)
-  container.pause()
+    print(f"[INFO] Pausing {name}...")
+    container = client.containers.get(name)
+    container.pause()
 
-  start_time = time.time()
-  while True:
-    if not is_service_running(service_name):
-      print(f"[INFO] {service_name} is now paused.")
-      return True
+    start_time = time.time()
+    while True:
+      if not is_service_running(name):
+        print(f"[INFO] {name} is now paused.")
+        break
 
-    if time.time() - start_time > MAX_WAIT_SECONDS:
-      print(f"[WARN] Timeout while pausing {service_name}.")
-      break
+      if time.time() - start_time > MAX_WAIT_SECONDS:
+        print(f"[WARN] Timeout while pausing {name}.")
+        break
 
-    time.sleep(0.5)
+      time.sleep(0.5)
 
-def unpause_service(service_name):
-  if is_service_running(service_name):
-    print(f"[INFO] {service_name} is already running.")
-    return True
-  
-  print(f"[INFO] Unpausing {service_name}...")
-  container = client.containers.get(service_name)
-  container.unpause()
+def unpause_services(service_names):
+  for name in service_names:
+    if is_service_running(name):
+      print(f"[INFO] {name} is already running.")
+      continue
 
-  start_time = time.time()
-  while True:
-    if is_service_running(service_name):
-      print(f"[INFO] {service_name} is now running.")
-      return True
+    print(f"[INFO] Unpausing {name}...")
+    container = client.containers.get(name)
+    container.unpause()
 
-    if time.time() - start_time > MAX_WAIT_SECONDS:
-      print(f"[WARN] Timeout while unpausing {service_name}.")
-      break
+    start_time = time.time()
+    while True:
+      if is_service_running(name):
+        print(f"[INFO] {name} is now running.")
+        break
 
-    time.sleep(0.5)
+      if time.time() - start_time > MAX_WAIT_SECONDS:
+        print(f"[WARN] Timeout while unpausing {name}.")
+        break
+
+      time.sleep(0.5)
