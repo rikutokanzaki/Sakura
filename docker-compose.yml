@@ -6,11 +6,12 @@ services:
   dispatcher:
     container_name: dispatcher
     build: ./dispatcher
+    depends_on:
+      - app
+      - snare
     ports:
       - "80:80"
       - "22:22"
-    depends_on:
-      - app
     env_file:
       - .env
     volumes:
@@ -22,7 +23,7 @@ services:
 
 
   ####################################
-  ### Real System
+  ### Client
   ####################################
   app:
     container_name: app
@@ -52,12 +53,52 @@ services:
   ####################################
 
   ## HTTP
-  http-honeypot:
-    container_name: http-honeypot
-    build: ./honeypots
+  snare:
+    container_name: snare
+    depends_on:
+      - tanner
+    image: ghcr.io/telekom-security/snare:24.04.1
+    restart: always
+
+  tanner_redis:
+    container_name: tanner_redis
+    image: ghcr.io/telekom-security/redis:24.04.1
+    restart: always
+    read_only: true
+
+  tanner_phpox:
+    container_name: tanner_phpox
+    image: ghcr.io/telekom-security/phpox:24.04.1
+    restart: always
+    read_only: true
+
+  tanner_api:
+    container_name: tanner_api
+    depends_on:
+      - tanner_redis
+    image: ghcr.io/telekom-security/tanner:24.04.1
     volumes:
-      - ./honeypots/src:/usr/share/nginx/html
-      - ${SAKURA_DATA_PATH}/honeypots:/var/log/nginx
+      - ${SAKURA_DATA_PATH}/tanner/log:/var/log/tanner
+    tmpfs:
+      - /tmp/tanner:uid=2000,gid=2000
+    restart: always
+    read_only: true
+    command: tannerapi
+
+  tanner:
+    container_name: tanner
+    depends_on:
+      - tanner_api
+      - tanner_phpox
+    image: ghcr.io/telekom-security/tanner:24.04.1
+    volumes:
+      - ${SAKURA_DATA_PATH}/tanner/log:/var/log/tanner
+      - ${SAKURA_DATA_PATH}/tanner/files:/opt/tanner/files
+    tmpfs:
+      - /tmp/tanner:uid=2000,gid=2000
+    restart: always
+    read_only: true
+    command: tanner
 
   ## SSH
   cowrie:
