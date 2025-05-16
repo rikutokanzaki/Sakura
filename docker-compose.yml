@@ -1,11 +1,11 @@
 services:
 
   ####################################
-  ### Reverse Proxy
+  ### Dispatcher
   ####################################
-  reverse-proxy:
-    container_name: reverse-proxy
-    build: ./reverse-proxy
+  dispatcher:
+    container_name: dispatcher
+    build: ./dispatcher
     ports:
       - "80:80"
       - "22:22"
@@ -14,11 +14,11 @@ services:
     env_file:
       - .env
     volumes:
-      - ./reverse-proxy/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
-      - ./reverse-proxy/conf.d:/usr/local/openresty/nginx/conf/conf.d
-      - ./reverse-proxy/lua/detect_http.lua:/usr/local/openresty/nginx/lua/detect_http.lua
-      - ./reverse-proxy/lua/detect_ssh.lua:/usr/local/openresty/nginx/lua/detect_ssh.lua
-      - ${SAKURA_DATA_PATH}/reverse-proxy:/var/log/nginx
+      - ./dispatcher/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
+      - ./dispatcher/conf.d:/usr/local/openresty/nginx/conf/conf.d
+      - ./dispatcher/lua/detect_http.lua:/usr/local/openresty/nginx/lua/detect_http.lua
+      - ./dispatcher/lua/detect_ssh.lua:/usr/local/openresty/nginx/lua/detect_ssh.lua
+      - ${SAKURA_DATA_PATH}/dispatcher:/var/log/nginx
 
 
   ####################################
@@ -50,6 +50,8 @@ services:
   ####################################
   ### Honeypots
   ####################################
+
+  ## HTTP
   http-honeypot:
     container_name: http-honeypot
     build: ./honeypots
@@ -57,6 +59,7 @@ services:
       - ./honeypots/src:/usr/share/nginx/html
       - ${SAKURA_DATA_PATH}/honeypots:/var/log/nginx
 
+  ## SSH
   cowrie:
     container_name: cowrie
     image: cowrie/cowrie
