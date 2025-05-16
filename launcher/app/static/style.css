@@ -8,7 +8,7 @@ body {
 }
 
 .title {
-  padding: 20px 0 0 40px;
+  padding: 20px 0 0 5%;
 }
 
 .launchHoneypot {
@@ -50,6 +50,14 @@ body {
 .launchButton:active {
   background-color: #fff;
   color: #2faf87;
+}
+
+.honeypotLogs {
+  margin-bottom: 70px;
+}
+
+.honeypotName {
+  padding: 0 0 20px 5%;
 }
 
 .logControls {

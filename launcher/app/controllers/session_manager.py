@@ -1,6 +1,6 @@
 import time
 import threading
-from app.controller import docker_manager
+from app.controllers import docker_manager
 
 SESSION_TIMEOUT = 60
 

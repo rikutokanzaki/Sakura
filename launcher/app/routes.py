@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from flask import Blueprint, request, abort, render_template, jsonify, current_app
-from app.controller import docker_manager, session_manager
+from app.controllers import docker_manager, session_manager
+from app.utils import flatten
 import os
 import json
 import ipaddress
@@ -36,6 +37,20 @@ for addr in os.getenv("ALLOWED_NETWORKS", "").split(","):
 def index():
   return render_template("index.html")
 
+@bp.route('/api/logs/snare', methods=['GET'])
+def get_snare_logs():
+  file_path = os.path.join(os.path.dirname(__file__), '../data/tanner/log/tanner_report.json')
+
+  try:
+    with open(file_path, 'r', encoding='utf-8') as f:
+      logs = [json.loads(line) for line in f if line.strip()]
+
+    flat_logs = [flatten.flatten_dict(log) for log in logs]
+
+    return jsonify(flat_logs)
+  except FileNotFoundError:
+    return jsonify({'error': 'tanner_report.log not found'}), 404
+
 @bp.route('/api/logs/cowrie', methods=['GET'])
 def get_cowrie_logs():
   file_path = os.path.join(os.path.dirname(__file__), '../data/cowrie/cowrie.json')
@@ -47,13 +62,13 @@ def get_cowrie_logs():
   except FileNotFoundError:
     return jsonify({'error': 'cowrie.json not found'}), 404
 
-@bp.route('/trigger/http', methods=['POST'])
+@bp.route('/trigger/snare', methods=['POST'])
 def trigger_http():
-  session_manager.update_session("http-honeypot")
+  session_manager.update_session("snare")
 
-  with session_manager._services["http-honeypot"].pause_lock:
-    if not docker_manager.is_service_running("http-honeypot"):
-      docker_manager.unpause_service("http-honeypot")
+  with session_manager._services["snare"].pause_lock:
+    if not docker_manager.is_service_running("snare"):
+      docker_manager.unpause_service("snare")
   
   return "HTTP Honeypot Triggered", 200
 
@@ -69,7 +84,7 @@ def trigger_cowrie():
 
 @bp.before_request
 def before_request():
-  restricted_paths = ['/', '/api/logs/cowrie']
+  restricted_paths = ['/', '/api/logs/cowrie', 'api/logs/snare']
   if request.path not in restricted_paths:
     return
 

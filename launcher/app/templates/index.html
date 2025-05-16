@@ -15,16 +15,17 @@
   <div class="launchHoneypot">
     <select class="dropdown" name="honeypots" id="honeypotSelect">
       <option value="cowrie">Cowrie</option>
+      <option value="snare">Snare</option>
     </select>
 
     <button class="launchButton">Launch</button>
   </div>
 
-  <div class="honeypotLogs">
-
+  <div class="honeypotLogs" id="snare">
+    <h2 class="honeypotName">Snare</h2>
     <div class="logControls">
-      <label for="logCountSelect">Show:</label>
-      <select class="dropdown" id="logCountSelect">
+      <label for="logCountSelectSnare">Show:</label>
+      <select class="dropdown" id="logCountSelectSnare">
         <option value="10">10</option>
         <option value="20">20</option>
         <option value="50">50</option>
@@ -34,7 +35,26 @@
     </div>
 
     <div class="table-wrap">
-      <table class="logTable">
+      <table class="logTable" id="snareTable">
+      </table>
+    </div>
+  </div>
+
+  <div class="honeypotLogs" id="cowrie">
+    <h2 class="honeypotName">Cowrie</h2>
+    <div class="logControls">
+      <label for="logCountSelectCowrie">Show:</label>
+      <select class="dropdown" id="logCountSelectCowrie">
+        <option value="10">10</option>
+        <option value="20">20</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="all">All</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table class="logTable" id="cowrieTable">
       </table>
     </div>
   </div>

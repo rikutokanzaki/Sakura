@@ -1,15 +1,26 @@
-let logs = [];
+function getPreferredOrder(honeypotName) {
+  if (honeypotName === 'cowrie') {
+    return ['timestamp', 'src_ip', 'src_port', 'protocol', 'message', 'duration', 'username', 'password']
+  } else if (honeypotName === 'snare') {
+    return ['timestamp', 'peer.ip', 'peer.port', 'method', 'path', 'status', 'uuid'];
+  } else {
+    return [];
+  }
+}
 
-function renderLogs(logCount) {
-  const table = document.querySelector('.honeypotLogs .logTable');
-  if (logs.length === 0) return;
+function renderLogs(honeypotName, logs, logCount, tableId) {
+  const table = document.getElementById(tableId);
+  if (!logs || logs.length === 0) {
+    table.innerHTML = "<tr><td>No logs found</td></tr>";
+    return;
+  }
 
   const allKeysSet = new Set();
   logs.forEach(log => {
     Object.keys(log).forEach(key => allKeysSet.add(key));
   });
 
-  const preferredOrder = ['timestamp', 'src_ip', 'src_port', 'protocol', 'message', 'duration', 'username', 'password'];
+  const preferredOrder = getPreferredOrder(honeypotName);
   const otherKeys = [...allKeysSet].filter(key => !preferredOrder.includes(key)).sort();
   const resultKeys = [...preferredOrder, ...otherKeys];
 
@@ -20,13 +31,7 @@ function renderLogs(logCount) {
   headerRow += '</tr>';
   table.innerHTML = headerRow;
 
-  let displayLogs;
-  if (logCount === 'all') {
-    displayLogs = logs;
-  } else {
-    const n = parseInt(logCount);
-    displayLogs = logs.slice(-n);
-  }
+  const displayLogs = logCount === 'all' ? logs : logs.slice(-parseInt(logCount));
 
   displayLogs.forEach(log => {
     const row = document.createElement('tr');
@@ -35,22 +40,27 @@ function renderLogs(logCount) {
   });
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  fetch('api/logs/cowrie')
+function loadAndRenderLogs(honeypotName, tableId, selectId) {
+  fetch(`/api/logs/${honeypotName}`)
     .then(response => response.json())
-    .then(data => {
-      logs = data;
+    .then(logs => {
+      const logCount = document.getElementById(selectId).value;
+      renderLogs(honeypotName, logs, logCount, tableId);
 
-      renderLogs('10');
-
-      const logCountSelect = document.getElementById('logCountSelect');
-      logCountSelect.addEventListener('change', (e) => {
-        renderLogs(e.target.value);
+      document.getElementById(selectId).addEventListener('change', (e) => {
+        renderLogs(honeypotName, logs, e.target.value, tableId);
       });
     })
     .catch(error => {
-      console.error('Failed to load logs:', error);
+      console.error(`Failed to load ${honeypotName} logs:`, error);
+      const table = document.getElementById(tableId);
+      table.innerHTML = `<tr><td colspan="99">Error loading ${honeypotName} logs.</td></tr>`;
     });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadAndRenderLogs('cowrie', 'cowrieTable', 'logCountSelectCowrie');
+  loadAndRenderLogs('snare', 'snareTable', 'logCountSelectSnare');
 
   const launchButton = document.querySelector('.launchButton');
   const honeypotSelect = document.getElementById('honeypotSelect');
@@ -60,19 +70,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
     fetch(`/trigger/${selectedHoneypot}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ honeypot: selectedHoneypot })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ honeypotName: selectedHoneypot })
     })
     .then(response => {
-      if (!response.ok) {
-        throw new Error('Failed to launch honeypot');
-      }
+      if (!response.ok) throw new Error('Failed to launch honeypotName');
       return response.text();
     })
     .then(data => {
-      console.log('Succeed to launch honeypot:', data);
+      console.log('Succeed to launch honeypotName:', data);
       alert(`Request to launch ${selectedHoneypot} has been sent.`);
     })
     .catch(error => {
