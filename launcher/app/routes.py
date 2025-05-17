@@ -83,12 +83,13 @@ def trigger_cowrie():
 
 @bp.before_request
 def before_request():
-  restricted_paths = ['/', '/api/logs/cowrie', 'api/logs/snare']
+  restricted_paths = ['/', '/api']
   if request.path not in restricted_paths:
     return
 
   try:
-    remote_ip = request.remote_addr or '0.0.0.0'
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    remote_ip = forwarded_for.split(",")[0].strip()
     remote_addr = ipaddress.ip_address(remote_ip)
     current_app.logger.info(f"Remote address: {remote_addr}")
 

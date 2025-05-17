@@ -64,7 +64,6 @@ def update_session(service_name: str):
 
     _services[service_name].update()
 
-
 def is_session_active(service_name: str):
   with _services_lock:
     return _services.get(service_name, None) and _services[service_name].is_active()

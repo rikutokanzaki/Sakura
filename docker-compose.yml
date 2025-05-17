@@ -12,6 +12,7 @@ services:
     ports:
       - "80:80"
       - "22:22"
+      - "5000:5000"
     env_file:
       - .env
     volumes:
@@ -39,8 +40,6 @@ services:
   launcher:
     container_name: launcher
     build: ./launcher
-    ports:
-      - "127.0.0.1:5000:5000"
     env_file:
       - .env
     volumes:

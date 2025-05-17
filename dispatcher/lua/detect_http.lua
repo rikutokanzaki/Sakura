@@ -21,6 +21,6 @@ for _, p in ipairs(http_patterns) do
       ngx.log(ngx.ERR, "failed to trigger: ", err)
     end
 
-    return ngx.exec("@honeypot_http")
+    return ngx.exec("@snare")
   end
 end
