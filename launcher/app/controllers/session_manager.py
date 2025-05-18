@@ -7,6 +7,10 @@ SESSION_TIMEOUT = 60
 _services = {}
 _services_lock = threading.Lock()
 
+linked_map = {
+    "snare": ["tanner_redis", "tanner_phpox", "tanner_api", "tanner"]
+  }
+
 class ServiceSession:
   def __init__(self, service_name, linked_services=None):
     self.service_names = [service_name] + (linked_services or [])
@@ -52,10 +56,6 @@ class ServiceSession:
       self._session_active.wait()
   
 def update_session(service_name: str):
-  linked_map = {
-    "snare": ["tanner_redis", "tanner_phpox", "tanner_api", "tanner"]
-  }
-
   with _services_lock:
     if service_name not in _services:
       linked = linked_map.get(service_name, [])

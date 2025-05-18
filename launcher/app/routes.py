@@ -14,24 +14,34 @@ allowed_networks = [n.strip() for n in os.getenv("ALLOWED_NETWORKS", "").split("
 
 resolved_allowed_networks = []
 
-for addr in os.getenv("ALLOWED_NETWORKS", "").split(","):
+try:
+  hostname = socket.gethostname()
+  ip = socket.gethostbyname(hostname)
+  network = ipaddress.ip_network(f"{ip}/24", strict=False)
+  resolved_allowed_networks.append(network)
+  print(f"[ALLOW] Launcher self-resolved network: {network}")
+except socket.gaierror as e:
+  print(f"[DENY] Could not resolve self IP: {e}")
+
+for addr in allowed_networks:
   addr = addr.strip()
   if not addr:
     continue
+  try:
+    network = ipaddress.ip_network(addr, strict=False)
+    resolved_allowed_networks.append(network)
+    print(f"[ALLOW] Parsed network: {network}")
+    continue
+  except ValueError:
+    pass
+  
   try:
     ip = socket.gethostbyname(addr)
     network = ipaddress.ip_network(f"{ip}/32", strict=False)
     resolved_allowed_networks.append(network)
     print(f"[ALLOW] Resolved {addr} to {network}")
-  except socket.gaierror:
-    try:
-      if "/" not in addr:
-        addr += "/32"
-      network = ipaddress.ip_network(addr, strict=False)
-      resolved_allowed_networks.append(network)
-      print(f"[ALLOW] Parsed network: {network}")
-    except ValueError as e:
-      print(f"Invalid network {addr}: {e}")
+  except socket.gaierror as e:
+      print(f"[DENY] Invalid network or hostname {addr}")
 
 @bp.route('/')
 def index():
@@ -67,7 +77,9 @@ def trigger_snare():
   session_manager.update_session("snare")
 
   with session_manager._services["snare"].pause_lock:
+    if not docker_manager.is_service_running("snare"):
       docker_manager.unpause_services(["snare","tanner_redis", "tanner_phpox", "tanner_api", "tanner"])
+    session_manager.update_session("snare")
   
   return "HTTP Honeypot Triggered", 200
 
@@ -78,18 +90,20 @@ def trigger_cowrie():
   with session_manager._services["cowrie"].pause_lock:
     if not docker_manager.is_service_running("cowrie"):
       docker_manager.unpause_services(["cowrie"])
+    session_manager.update_session("cowrie")
   
   return "SSH Honeypot Triggered", 200
 
 @bp.before_request
 def before_request():
-  restricted_paths = ['/', '/api']
-  if request.path not in restricted_paths:
-    return
-
   try:
     forwarded_for = request.headers.get("X-Forwarded-For", "")
-    remote_ip = forwarded_for.split(",")[0].strip()
+    
+    if forwarded_for:
+      remote_ip = forwarded_for.split(",")[0].strip()
+    else:
+      remote_ip = request.remote_addr
+
     remote_addr = ipaddress.ip_address(remote_ip)
     current_app.logger.info(f"Remote address: {remote_addr}")
 

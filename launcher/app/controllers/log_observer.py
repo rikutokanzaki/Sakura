@@ -9,22 +9,13 @@ class CowrieLogObserver:
     self.log_path = log_path
     self.poll_interval = poll_interval
     self._last_size = 0
-    self._running = False
-    self._thread = None
+    self._thread = threading.Thread(target=self._observe_log, daemon=True)
   
   def start(self):
-    if not self._running:
-      self._running = True
-      self._thread = threading.Thread(target=self._observe_log, daemon=True)
-      self._thread.start()
-  
-  def stop(self):
-    self._running = False
-    if self._thread:
-      self._thread.join()
+    self._thread.start()
   
   def _observe_log(self):
-    while self._running:
+    while True:
       try:
         current_size = os.path.getsize(self.log_path)
         if current_size > self._last_size:
@@ -37,6 +28,5 @@ class CowrieLogObserver:
               print("[LOG OBSERVER] Session has been updated.")
           self._last_size = current_size
       except FileNotFoundError:
-        print("cowrie.json not found.")
-        pass
+        print("[LOG OBSERVER] cowrie.json not found.")
       time.sleep(self.poll_interval)
