@@ -40,6 +40,8 @@ services:
   launcher:
     container_name: launcher
     build: ./launcher
+    depends_on:
+      - dispatcher
     env_file:
       - .env
     volumes:
