@@ -8,7 +8,9 @@ services:
     build: ./dispatcher
     depends_on:
       - app
+      - launcher
       - snare
+      - cowrie
     ports:
       - "80:80"
       - "22:22"
@@ -40,8 +42,6 @@ services:
   launcher:
     container_name: launcher
     build: ./launcher
-    depends_on:
-      - dispatcher
     env_file:
       - .env
     volumes:
