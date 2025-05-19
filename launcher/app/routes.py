@@ -98,11 +98,11 @@ def trigger_cowrie():
 def restrict_ip():
   try:
     forwarded_for = request.headers.get('X-Forwarded-For')
-    current_app.logger.info(f"X-Forwarded-For: {forwarded_for}")
+    if not forwarded_for:
+      raise ValueError("X-Forwarded-For header missing")
 
-    remote_ip = request.remote_addr
+    remote_ip = forwarded_for.split(',')[0].strip()
     remote_addr = ipaddress.ip_address(remote_ip)
-    current_app.logger.info(f"Remote address: {remote_addr}")
 
     for ip_network in resolved_allowed_networks:
       if remote_addr in ip_network:
