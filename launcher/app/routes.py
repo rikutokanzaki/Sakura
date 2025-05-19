@@ -95,15 +95,12 @@ def trigger_cowrie():
   return "SSH Honeypot Triggered", 200
 
 @bp.before_request
-def before_request():
+def restrict_ip():
   try:
-    forwarded_for = request.headers.get("X-Forwarded-For", "")
-    
-    if forwarded_for:
-      remote_ip = forwarded_for.split(",")[0].strip()
-    else:
-      remote_ip = request.remote_addr
+    forwarded_for = request.headers.get('X-Forwarded-For')
+    current_app.logger.info(f"X-Forwarded-For: {forwarded_for}")
 
+    remote_ip = request.remote_addr
     remote_addr = ipaddress.ip_address(remote_ip)
     current_app.logger.info(f"Remote address: {remote_addr}")
 
@@ -114,4 +111,4 @@ def before_request():
   except Exception as e:
     current_app.logger.error(f"Error in IP check: {e}")
 
-  return abort(403, "Access denied from your IP address")
+  return abort(403, "Access denied from your IP address.")

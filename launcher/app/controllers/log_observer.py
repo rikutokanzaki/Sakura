@@ -28,5 +28,5 @@ class CowrieLogObserver:
               print("[LOG OBSERVER] Session has been updated.")
           self._last_size = current_size
       except FileNotFoundError:
-        print("[LOG OBSERVER] cowrie.json not found.")
+        print("[LOG OBSERVER] cowrie.json has not been created yet.")
       time.sleep(self.poll_interval)
