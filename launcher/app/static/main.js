@@ -1,8 +1,8 @@
 function getPreferredOrder(honeypotName) {
-  if (honeypotName === 'cowrie') {
-    return ['timestamp', 'src_ip', 'src_port', 'protocol', 'message', 'duration', 'username', 'password']
-  } else if (honeypotName === 'snare') {
-    return ['timestamp', 'peer.ip', 'peer.port', 'method', 'path', 'status', 'uuid'];
+  if (honeypotName === 'snare') {
+    return ['timestamp', 'headers.x-real-ip', "headers.x-forwarded-for", 'peer.ip', 'peer.port', 'method', 'path', 'status', 'uuid'];
+  } else if (honeypotName === 'cowrie') {
+    return ['timestamp', 'src_ip', 'src_port', 'protocol', 'message', 'duration', 'username', 'password'];
   } else {
     return [];
   }
