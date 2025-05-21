@@ -1,6 +1,5 @@
 import os
 import time
-import json
 import threading
 from app.controllers import session_manager
 
@@ -15,6 +14,7 @@ class CowrieLogObserver:
     self._thread.start()
   
   def _observe_log(self):
+    file_missing_logged = False
     while True:
       try:
         current_size = os.path.getsize(self.log_path)
@@ -27,6 +27,9 @@ class CowrieLogObserver:
               session_manager.update_session("cowrie")
               print("[LOG OBSERVER] Session has been updated.")
           self._last_size = current_size
+        file_missing_logged = False
       except FileNotFoundError:
-        print("[LOG OBSERVER] cowrie.json has not been created yet.")
+        if not file_missing_logged:
+          print("[LOG OBSERVER] cowrie.json has not been created yet.")
+          file_missing_logged = True
       time.sleep(self.poll_interval)
