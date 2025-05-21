@@ -59,17 +59,23 @@ services:
     depends_on:
       - tanner
     image: ghcr.io/telekom-security/snare:24.04.1
+    environment:
+      - PYTHONUNBUFFERED=1
     restart: always
 
   tanner_redis:
     container_name: tanner_redis
     image: ghcr.io/telekom-security/redis:24.04.1
+    environment:
+      - PYTHONUNBUFFERED=1
     restart: always
     read_only: true
 
   tanner_phpox:
     container_name: tanner_phpox
     image: ghcr.io/telekom-security/phpox:24.04.1
+    environment:
+      - PYTHONUNBUFFERED=1
     restart: always
     read_only: true
 
@@ -80,6 +86,8 @@ services:
     image: ghcr.io/telekom-security/tanner:24.04.1
     volumes:
       - ${SAKURA_DATA_PATH}/tanner/log:/var/log/tanner
+    environment:
+      - PYTHONUNBUFFERED=1
     tmpfs:
       - /tmp/tanner:uid=2000,gid=2000
     restart: always
@@ -95,6 +103,8 @@ services:
     volumes:
       - ${SAKURA_DATA_PATH}/tanner/log:/var/log/tanner
       - ${SAKURA_DATA_PATH}/tanner/files:/opt/tanner/files
+    environment:
+      - PYTHONUNBUFFERED=1
     tmpfs:
       - /tmp/tanner:uid=2000,gid=2000
     restart: always
@@ -108,6 +118,7 @@ services:
     volumes:
       - ${SAKURA_DATA_PATH}/cowrie:/cowrie/cowrie-git/var/log/cowrie
     environment:
+      - PYTHONUNBUFFERED=1
       - COWRIE_TTYLOG_ENABLED=yes
 
 
