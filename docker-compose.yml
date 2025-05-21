@@ -34,7 +34,7 @@ services:
     volumes:
       - ./app/src:/usr/share/nginx/html
       - ${SAKURA_DATA_PATH}/app:/var/log/nginx
-  
+
 
   ####################################
   ### Launcher
