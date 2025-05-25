@@ -18,10 +18,6 @@ services:
     env_file:
       - .env
     volumes:
-      - ./dispatcher/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
-      - ./dispatcher/conf.d:/usr/local/openresty/nginx/conf/conf.d
-      - ./dispatcher/lua/detect_http.lua:/usr/local/openresty/nginx/lua/detect_http.lua
-      - ./dispatcher/lua/detect_ssh.lua:/usr/local/openresty/nginx/lua/detect_ssh.lua
       - ${SAKURA_DATA_PATH}/dispatcher:/var/log/nginx
 
 
