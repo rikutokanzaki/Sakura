@@ -32,7 +32,6 @@ services:
     container_name: app
     build: ./app
     volumes:
-      - ./app/src:/usr/share/nginx/html
       - ${SAKURA_DATA_PATH}/app:/var/log/nginx
 
 
@@ -267,11 +266,11 @@ services:
     user: root
     volumes:
       - certs:/usr/share/metricbeat/certs
-      - "./elk/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro"
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "/sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro"
-      - "/proc:/hostfs/proc:ro"
-      - "/:/hostfs:ro"
+      - ./elk/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /proc:/hostfs/proc:ro
+      - /:/hostfs:ro
     environment:
       - ELASTIC_USER=elastic
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
@@ -294,8 +293,8 @@ services:
     user: root
     volumes:
       - certs:/usr/share/logstash/certs
-      - "./elk/logstash_ingest_data/:/usr/share/logstash/ingest_data/"
-      - "./elk/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro"
+      - ./elk/logstash_ingest_data/:/usr/share/logstash/ingest_data/
+      - ./elk/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
       - ${SAKURA_DATA_PATH}:/data
     ports:
       - "64305:9600"
