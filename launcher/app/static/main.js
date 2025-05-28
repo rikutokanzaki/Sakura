@@ -1,5 +1,7 @@
 function getPreferredOrder(honeypotName) {
-  if (honeypotName === 'snare') {
+  if (honeypotName == 'h0neytr4p') {
+    return ['timestamp', 'header_x-real-ip', 'header_x-forwarded-for', 'src_ip', 'request_method', 'request_uri'];
+  } else if (honeypotName === 'snare') {
     return ['timestamp', 'headers.x-real-ip', "headers.x-forwarded-for", 'peer.ip', 'peer.port', 'method', 'path', 'status', 'uuid'];
   } else if (honeypotName === 'cowrie') {
     return ['timestamp', 'src_ip', 'src_port', 'protocol', 'message', 'duration', 'username', 'password'];
@@ -61,6 +63,7 @@ function loadAndRenderLogs(honeypotName, tableId, selectId) {
 window.addEventListener('DOMContentLoaded', () => {
   loadAndRenderLogs('cowrie', 'cowrieTable', 'logCountSelectCowrie');
   loadAndRenderLogs('snare', 'snareTable', 'logCountSelectSnare');
+  loadAndRenderLogs('h0neytr4p', 'h0neytr4pTable', 'logCountSelectH0neytr4p');
 
   const launchButton = document.querySelector('.launchButton');
   const honeypotSelect = document.getElementById('honeypotSelect');

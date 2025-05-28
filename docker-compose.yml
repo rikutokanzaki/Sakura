@@ -7,8 +7,8 @@ services:
     container_name: dispatcher
     build: ./dispatcher
     depends_on:
-      - app
       - launcher
+      - h0neytr4p
       - snare
       - cowrie
     ports:
@@ -19,16 +19,6 @@ services:
       - .env
     volumes:
       - ${SAKURA_DATA_PATH}/dispatcher:/var/log/nginx
-
-
-  ####################################
-  ### Client
-  ####################################
-  app:
-    container_name: app
-    build: ./app
-    volumes:
-      - ${SAKURA_DATA_PATH}/app:/var/log/nginx
 
 
   ####################################
@@ -45,10 +35,30 @@ services:
 
 
   ####################################
-  ### Honeypots
+  ### Layers
   ####################################
 
-  ## HTTP
+  ##############
+  ## Active 
+  ##############
+
+  ### HTTP ###
+  h0neytr4p:
+    container_name: h0neytr4p
+    image: ghcr.io/telekom-security/h0neytr4p:24.04.1
+    volumes:
+      - ${SAKURA_DATA_PATH}/h0neytr4p/log/:/opt/h0neytr4p/log/
+      - ${SAKURA_DATA_PATH}/h0neytr4p/payloads/:/data/h0neytr4p/payloads/
+
+  ### SSH ###
+  # Add frontline ssh system here.
+
+
+  ##############
+  ## Passive 
+  ##############
+
+  ### HTTP ###
   snare:
     container_name: snare
     depends_on:
@@ -106,7 +116,7 @@ services:
     read_only: true
     command: tanner
 
-  ## SSH
+  ### SSH ###
   cowrie:
     container_name: cowrie
     image: cowrie/cowrie
