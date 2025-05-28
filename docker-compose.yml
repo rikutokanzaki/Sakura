@@ -3,9 +3,9 @@ services:
   ####################################
   ### Dispatcher
   ####################################
-  dispatcher:
-    container_name: dispatcher
-    build: ./dispatcher
+  openresty:
+    container_name: openresty
+    build: ./dispatcher/openresty
     depends_on:
       - launcher
       - h0neytr4p
@@ -18,7 +18,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ${SAKURA_DATA_PATH}/dispatcher:/var/log/nginx
+      - ${SAKURA_DATA_PATH}/openresty:/var/log/nginx
 
 
   ####################################
