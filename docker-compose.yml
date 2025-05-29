@@ -8,8 +8,8 @@ services:
     build: ./dispatcher/openresty
     depends_on:
       - launcher
+      - heralding
       - h0neytr4p
-      - snare
       - cowrie
     ports:
       - "80:80"
@@ -42,6 +42,21 @@ services:
   ## Active 
   ##############
 
+  ### HTTP, SSH ###
+  heralding:
+    container_name: heralding
+    image: ghcr.io/telekom-security/heralding:24.04.1
+    volumes:
+      - ${SAKURA_DATA_PATH}/heralding:/var/log/heralding
+    tmpfs:
+      - /tmp/heralding:uid=2000,gid=2000
+    restart: always
+    read_only: true
+  
+  ##############
+  ## Passive 
+  ##############
+
   ### HTTP ###
   h0neytr4p:
     container_name: h0neytr4p
@@ -49,72 +64,6 @@ services:
     volumes:
       - ${SAKURA_DATA_PATH}/h0neytr4p/log/:/opt/h0neytr4p/log/
       - ${SAKURA_DATA_PATH}/h0neytr4p/payloads/:/data/h0neytr4p/payloads/
-
-  ### SSH ###
-  # Add frontline ssh system here.
-
-
-  ##############
-  ## Passive 
-  ##############
-
-  ### HTTP ###
-  snare:
-    container_name: snare
-    depends_on:
-      - tanner
-    image: ghcr.io/telekom-security/snare:24.04.1
-    environment:
-      - PYTHONUNBUFFERED=1
-    restart: always
-
-  tanner_redis:
-    container_name: tanner_redis
-    image: ghcr.io/telekom-security/redis:24.04.1
-    environment:
-      - PYTHONUNBUFFERED=1
-    restart: always
-    read_only: true
-
-  tanner_phpox:
-    container_name: tanner_phpox
-    image: ghcr.io/telekom-security/phpox:24.04.1
-    environment:
-      - PYTHONUNBUFFERED=1
-    restart: always
-    read_only: true
-
-  tanner_api:
-    container_name: tanner_api
-    depends_on:
-      - tanner_redis
-    image: ghcr.io/telekom-security/tanner:24.04.1
-    volumes:
-      - ${SAKURA_DATA_PATH}/tanner/log:/var/log/tanner
-    environment:
-      - PYTHONUNBUFFERED=1
-    tmpfs:
-      - /tmp/tanner:uid=2000,gid=2000
-    restart: always
-    read_only: true
-    command: tannerapi
-
-  tanner:
-    container_name: tanner
-    depends_on:
-      - tanner_api
-      - tanner_phpox
-    image: ghcr.io/telekom-security/tanner:24.04.1
-    volumes:
-      - ${SAKURA_DATA_PATH}/tanner/log:/var/log/tanner
-      - ${SAKURA_DATA_PATH}/tanner/files:/opt/tanner/files
-    environment:
-      - PYTHONUNBUFFERED=1
-    tmpfs:
-      - /tmp/tanner:uid=2000,gid=2000
-    restart: always
-    read_only: true
-    command: tanner
 
   ### SSH ###
   cowrie:

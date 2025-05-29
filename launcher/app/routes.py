@@ -47,6 +47,20 @@ for addr in allowed_networks:
 def index():
   return render_template("index.html")
 
+@bp.route('/api/logs/heralding', methods=['GET'])
+def get_heralding_logs():
+  file_path = os.path.join(os.path.dirname(__file__), '../data/heralding/log_session.json')
+
+  try:
+    with open(file_path, 'r', encoding='utf-8') as f:
+      logs = [json.loads(line) for line in f if line.strip()]
+
+    flat_logs = [flatten.flatten_dict(log) for log in logs]
+
+    return jsonify(flat_logs)
+  except FileNotFoundError:
+    return jsonify({'error': 'log.json not found'}), 404
+
 @bp.route('/api/logs/h0neytr4p', methods=['GET'])
 def get_h0neytr4p_logs():
   file_path = os.path.join(os.path.dirname(__file__), '../data/h0neytr4p/log/log.json')
@@ -85,6 +99,17 @@ def get_cowrie_logs():
     return jsonify(logs)
   except FileNotFoundError:
     return jsonify({'error': 'cowrie.json not found'}), 404
+
+@bp.route('/trigger/h0neytr4p', methods=['POST'])
+def trigger_h0neytr4p():
+  session_manager.update_session("h0neytr4p")
+
+  with session_manager._services["h0neytr4p"].pause_lock:
+    if not docker_manager.is_service_running("h0neytr4p"):
+      docker_manager.unpause_services(["h0neytr4p"])
+    session_manager.update_session("h0neytr4p")
+  
+  return "SSH Honeypot Triggered", 200
 
 @bp.route('/trigger/snare', methods=['POST'])
 def trigger_snare():

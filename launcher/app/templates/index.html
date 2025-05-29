@@ -14,11 +14,30 @@
 
   <div class="launchHoneypot">
     <select class="dropdown" name="honeypots" id="honeypotSelect">
+      <option value="h0neytr4p">H0neytr4p</option>
       <option value="cowrie">Cowrie</option>
-      <option value="snare">Snare</option>
     </select>
 
     <button class="launchButton">Launch</button>
+  </div>
+
+  <div class="honeypotLogs" id="heralding">
+    <h2 class="honeypotName">Heralding</h2>
+    <div class="logControls">
+      <label for="logCountSelectHeralding">Display:</label>
+      <select class="dropdown" id="logCountSelectHeralding">
+        <option value="10">10</option>
+        <option value="20">20</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="all">All</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table class="logTable" id="heraldingTable">
+      </table>
+    </div>
   </div>
 
   <div class="honeypotLogs" id="h0neytr4p">
@@ -36,25 +55,6 @@
 
     <div class="table-wrap">
       <table class="logTable" id="h0neytr4pTable">
-      </table>
-    </div>
-  </div>
-
-  <div class="honeypotLogs" id="snare">
-    <h2 class="honeypotName">Snare</h2>
-    <div class="logControls">
-      <label for="logCountSelectSnare">Display:</label>
-      <select class="dropdown" id="logCountSelectSnare">
-        <option value="10">10</option>
-        <option value="20">20</option>
-        <option value="50">50</option>
-        <option value="100">100</option>
-        <option value="all">All</option>
-      </select>
-    </div>
-
-    <div class="table-wrap">
-      <table class="logTable" id="snareTable">
       </table>
     </div>
   </div>

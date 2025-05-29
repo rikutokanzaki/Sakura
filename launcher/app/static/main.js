@@ -1,5 +1,7 @@
 function getPreferredOrder(honeypotName) {
-  if (honeypotName == 'h0neytr4p') {
+  if (honeypotName == 'heralding') {
+    return ['timestamp', 'destination_ip', 'source_ip', 'source_port', 'request_uri', 'destination_port'];
+  } else if (honeypotName === 'h0neytr4p') {
     return ['timestamp', 'header_x-real-ip', 'header_x-forwarded-for', 'src_ip', 'request_method', 'request_uri'];
   } else if (honeypotName === 'snare') {
     return ['timestamp', 'headers.x-real-ip', "headers.x-forwarded-for", 'peer.ip', 'peer.port', 'method', 'path', 'status', 'uuid'];
@@ -61,9 +63,10 @@ function loadAndRenderLogs(honeypotName, tableId, selectId) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  loadAndRenderLogs('cowrie', 'cowrieTable', 'logCountSelectCowrie');
-  loadAndRenderLogs('snare', 'snareTable', 'logCountSelectSnare');
+  loadAndRenderLogs('heralding', 'heraldingTable', 'logCountSelectHeralding');
   loadAndRenderLogs('h0neytr4p', 'h0neytr4pTable', 'logCountSelectH0neytr4p');
+  loadAndRenderLogs('snare', 'snareTable', 'logCountSelectSnare');
+  loadAndRenderLogs('cowrie', 'cowrieTable', 'logCountSelectCowrie');
 
   const launchButton = document.querySelector('.launchButton');
   const honeypotSelect = document.getElementById('honeypotSelect');

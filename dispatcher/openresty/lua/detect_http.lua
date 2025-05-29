@@ -12,7 +12,7 @@ local http_patterns = {
 for _, p in ipairs(http_patterns) do
   if uri:find(p, 1, true) or ua:find(p, 1, true) then
     local launcher_port = "5000"
-    local launcher_address = "http://launcher:" .. launcher_port .. "/trigger/snare"
+    local launcher_address = "http://launcher:" .. launcher_port .. "/trigger/h0neytr4p"
     local res, err = httpc:request_uri(launcher_address, {
       method = "POST",
     })
@@ -21,6 +21,6 @@ for _, p in ipairs(http_patterns) do
       ngx.log(ngx.ERR, "failed to trigger: ", err)
     end
 
-    return ngx.exec("@snare")
+    return ngx.exec("@h0neytr4p")
   end
 end
