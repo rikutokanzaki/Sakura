@@ -10,15 +10,25 @@ services:
       - launcher
       - heralding
       - h0neytr4p
-      - cowrie
     ports:
       - "80:80"
-      - "22:22"
       - "5000:5000"
     env_file:
       - .env
     volumes:
       - ${SAKURA_DATA_PATH}/openresty:/var/log/nginx
+  
+  paramiko:
+    container_name: paramiko
+    build: ./dispatcher/paramiko
+    depends_on:
+      - launcher
+      - heralding
+      - cowrie
+    ports:
+      - "22:22"
+    env_file:
+      - .env
 
 
   ####################################
@@ -30,7 +40,7 @@ services:
     env_file:
       - .env
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${SAKURA_DATA_PATH}:/data
 
 
@@ -70,6 +80,7 @@ services:
     container_name: cowrie
     image: cowrie/cowrie
     volumes:
+      - ./layers/core/config/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt
       - ${SAKURA_DATA_PATH}/cowrie:/cowrie/cowrie-git/var/log/cowrie
     environment:
       - PYTHONUNBUFFERED=1
