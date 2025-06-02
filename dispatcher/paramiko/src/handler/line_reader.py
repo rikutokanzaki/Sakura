@@ -9,19 +9,19 @@ class LineReader:
     self.history_index = -1
 
   def redraw_line(self):
-    self.chan.send(b"\r")
-    self.chan.send(b"\x1b[K")
-    self.chan.send(self.prompt.encode())
+    self.chan.send(b"\r\x1b[2K")
+
+    self.chan.send(self.prompt.encode("utf-8"))
     self.chan.send(b"".join(self.buffer))
 
     back_steps = len(self.buffer) - self.cursor_pos
     if back_steps:
-      self.chan.send(f"\x1b[{back_steps}D".encode())
+      self.chan.send(f"\x1b[{back_steps}D".encode("utf-8"))
 
   def set_buffer_from_history(self):
     print(f"Setting buffer from history index: {self.history_index}")
     if 0 <= self.history_index < len(self.history):
-      self.buffer = [c.encode() for c in self.history[self.history_index]]
+      self.buffer = [c.encode("utf-8") for c in self.history[self.history_index]]
       self.cursor_pos = len(self.buffer)
       print("Buffer from history:", self.buffer)
     else:
@@ -69,6 +69,7 @@ class LineReader:
       if t == b"~" and self.cursor_pos < len(self.buffer):
         del self.buffer[self.cursor_pos]
         self.redraw_line()
+        print("Current buffer:", b"".join(self.buffer))
   
   def cleanup_terminal(self):
     self.chan.send(b"\x1bc")
@@ -94,12 +95,12 @@ class LineReader:
         # ENTER
         if data in (b"\n", b"\r"):
           self.chan.send(b"\r\n")
-          line = b"".join(self.buffer).decode("utf-8")
+          line = b"".join(self.buffer).decode("utf-8", errors="ignore")
           if line:
             print(f"Appending to history: '{line}'")
             self.history.append(line)
           else:
-            print("Empty line, not adding to history")
+            print("Empty line, not adding to history.")
           print(f"Current history: {self.history}")
           return line
 
@@ -109,6 +110,7 @@ class LineReader:
             del self.buffer[self.cursor_pos - 1]
             self.cursor_pos -= 1
             self.redraw_line()
+            print("Current buffer:", b"".join(self.buffer))
           continue
 
         self.buffer.insert(self.cursor_pos, data)

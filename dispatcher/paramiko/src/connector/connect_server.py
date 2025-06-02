@@ -71,7 +71,7 @@ def forward_to_cowrie(chan, username: str, password: str, history: list[str]):
     return output.decode("utf-8", errors="ignore")
   
   except Exception as e:
-    print(f"Error forwarding to Cowrie: {e}\r\n".encode())
+    print(f"Error forwarding to Cowrie: {e}\r\n")
     chan.close()
 
 def _wait_for_prompt(shell):
@@ -103,7 +103,7 @@ def _receive_until_prompt(shell, sent_cmd: str = "") -> bytes:
   cleaned_lines = []
 
   for line in lines:
-    if sent_cmd.encode() in line.strip():
+    if sent_cmd.encode("utf-8") in line.strip():
       continue
     cleaned_lines.append(line)
 

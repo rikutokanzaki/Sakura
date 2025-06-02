@@ -31,7 +31,7 @@ def get_cowrie_prompt(username, password):
 
     client.close()
 
-    lines = output.decode(errors="ignore").splitlines()
+    lines = output.decode("utf-8", errors="ignore").splitlines()
     for line in reversed(lines):
       if line.strip().endswith("$") or line.strip().endswith("#"):
         return line.strip() + " "
@@ -50,7 +50,7 @@ def handle_session(chan, username, password):
 
   try:
     while True:
-      chan.send(prompt.encode())
+      chan.send(prompt.encode("utf-8"))
       cmd = reader.read()
 
       if not cmd:
@@ -65,12 +65,12 @@ def handle_session(chan, username, password):
         try:
           res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
           if res.status_code == 200:
-            print("Cowrie unpaused. Transferring session...".encode())
+            print("Cowrie unpaused. Transferring session...")
           else:
-            print(f"Failed to unpause Cowrie (HTTP {res.status_code})".encode())
+            print(f"Failed to unpause Cowrie (HTTP {res.status_code})")
             break
         except Exception as e:
-          print(f"Error triggering Cowrie: {e}".encode())
+          print(f"Error triggering Cowrie: {e}")
           break
 
         cowrie_launched = True
