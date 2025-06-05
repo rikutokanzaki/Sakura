@@ -13,4 +13,4 @@ __pycache__/
 ####################################
 ### Elastic Stack
 ####################################
-/elk/logstash_ingest_data
+logstash_ingest_data/
