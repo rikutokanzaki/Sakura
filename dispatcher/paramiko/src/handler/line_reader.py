@@ -29,7 +29,11 @@ class LineReader:
     self.redraw_line()
 
   def handle_escape_sequence(self):
-    seq = self.chan.recv(2)
+    try:
+      seq = self.chan.recv(2)
+    except Exception as e:
+      print(f"Failed to read escape sequence: {e}")
+      return
 
     # UP
     if seq == b"[A":
@@ -65,7 +69,12 @@ class LineReader:
 
     # DELETE
     elif seq == b"[3":
-      t = self.chan.recv(1)
+      try:
+        t = self.chan.recv(1)
+      except Exception as e:
+        print(f"Failed to read escape sequence: {e}")
+        return
+
       if t == b"~" and self.cursor_pos < len(self.buffer):
         del self.buffer[self.cursor_pos]
         self.redraw_line()

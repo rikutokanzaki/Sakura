@@ -50,7 +50,6 @@ def handle_session(chan, username, password):
 
   try:
     while True:
-      chan.send(prompt.encode("utf-8"))
       cmd = reader.read()
 
       if not cmd:
