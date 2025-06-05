@@ -3,7 +3,7 @@ from connector import connect_server
 import paramiko
 import requests
 
-def get_cowrie_prompt(username, password):
+def get_prompt(username, password):
   try:
     res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
     if res.status_code != 200:
@@ -45,7 +45,7 @@ def handle_session(chan, username, password):
   commands = []
   cowrie_launched = False
 
-  prompt = get_cowrie_prompt(username, password)
+  prompt = get_prompt(username, password)
   reader = line_reader.LineReader(chan, prompt)
 
   try:
