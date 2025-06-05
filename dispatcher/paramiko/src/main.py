@@ -50,33 +50,49 @@ def start_proxy():
   print(f"SSH Proxy listening on {HOST}:{PORT}")
 
   while True:
-    client, addr = sock.accept()
-    print(f"Connection from {addr}")
-
-    transport = paramiko.Transport(client)
-    host_key = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
-    transport.add_server_key(host_key)
-    server = SSHProxyServer()
-
     try:
-      transport.start_server(server=server)
-    except paramiko.SSHException:
-      print("SSH negotiation failed")
-      continue
+      client, addr = sock.accept()
+      print(f"Connection from {addr}")
 
-    chan = transport.accept(20)
-    if chan is None:
-      print("No channel")
-      continue
+      transport = paramiko.Transport(client)
+      host_key = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
+      transport.add_server_key(host_key)
+      server = SSHProxyServer()
 
-    username = server.username
-    password = server.password
+      try:
+        transport.start_server(server=server)
+      except paramiko.SSHException:
+        print("SSH negotiation failed")
+        continue
+      except EOFError:
+        print("Client closed connection during handshake (EOF)")
+        continue
+      except Exception as e:
+        print(f"Unexpected error during SSH handshake: {e}")
+        continue
 
-    threading.Thread(
-      target=session_manager.handle_session,
-      args=(chan, username, password),
-      daemon=True
-    ).start()
+      try:
+        chan = transport.accept(20)
+        if chan is None:
+          print("No channel")
+          continue
+
+        username = server.username
+        password = server.password
+
+        threading.Thread(
+          target=session_manager.handle_session,
+          args=(chan, username, password),
+          daemon=True
+        ).start()
+    
+      except EOFError:
+        print("Client closed connection after authentication (EOF)")
+      except Exception as e:
+        print(f"Error during session handling: {e}")
+
+    except Exception as e:
+      print(f"Error acceptiong connection: {e}")
 
 if __name__ == "__main__":
   start_proxy()
