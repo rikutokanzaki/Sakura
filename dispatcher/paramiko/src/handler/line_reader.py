@@ -75,8 +75,6 @@ class LineReader:
     self.chan.send(b"\x1bc")
 
   def read(self):
-    print("LineReader.read() has been called")
-
     self.buffer = []
     self.cursor_pos = 0
     self.history_index = -1
@@ -97,11 +95,7 @@ class LineReader:
           self.chan.send(b"\r\n")
           line = b"".join(self.buffer).decode("utf-8", errors="ignore")
           if line:
-            print(f"Appending to history: '{line}'")
             self.history.append(line)
-          else:
-            print("Empty line, not adding to history.")
-          print(f"Current history: {self.history}")
           return line
 
         # BACKSPACE
@@ -110,7 +104,6 @@ class LineReader:
             del self.buffer[self.cursor_pos - 1]
             self.cursor_pos -= 1
             self.redraw_line()
-            print("Current buffer:", b"".join(self.buffer))
           continue
 
         self.buffer.insert(self.cursor_pos, data)
@@ -118,7 +111,6 @@ class LineReader:
         self.redraw_line()
 
       except Exception as e:
-        print(f"Error while reading from channel: {e}")
         break
 
     return ""
