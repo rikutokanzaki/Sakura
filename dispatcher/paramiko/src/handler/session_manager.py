@@ -2,8 +2,31 @@ from handler import line_reader
 from connector import connect_server
 import paramiko
 import requests
+import datetime
+import os
+import time
 
-def get_prompt(username, password):
+def get_motd_lines(hostname):
+  motd_file_path = os.path.join(os.path.dirname(__file__), "/config/motd.txt")
+
+  now = datetime.datetime.now(datetime.timezone.utc).strftime("%a %b %d %H:%M:%S UTC %Y")
+
+  formatted_hostname = (hostname + ":").ljust(10)
+
+  try:
+    with open(motd_file_path, "r", encoding="utf-8") as f:
+      lines = f.readlines()
+    
+    return [line.format(now=now, hostname=formatted_hostname) for line in lines]
+  except Exception as e:
+    print(f"Failed to read motd file: {e}")
+    return f"Welcome. (Host: 192.168.100.3 Time: {now})\n"
+
+def get_prompt(username, hostname):
+  prompt = f"{username}@{hostname}:~$ "
+  return prompt
+
+def get_cowrie_prompt(username, password):
   try:
     res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
     if res.status_code != 200:
@@ -45,8 +68,19 @@ def handle_session(chan, username, password):
   commands = []
   cowrie_launched = False
 
-  prompt = get_prompt(username, password)
+  hostname = str(os.getenv('HOST_NAME'))[:9]
+
+  prompt = get_prompt(username, hostname)
   reader = line_reader.LineReader(chan, prompt)
+
+  motd_lines = get_motd_lines(hostname)
+  for i, line in enumerate(motd_lines):
+    is_last = (i == len(motd_lines) - 1)
+    sent_line = line.rstrip()
+    if not is_last:
+      sent_line += "\r\n"
+    chan.send(sent_line.encode("utf-8"))
+    time.sleep(0.005)
 
   try:
     while True:
