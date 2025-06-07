@@ -7,6 +7,9 @@ class LineReader:
     self.escape_seq = b""
     self.history = []
     self.history_index = -1
+  
+  def update_prompt(self, new_prompt):
+    self.prompt = new_prompt
 
   def redraw_line(self):
     self.chan.send(b"\r\x1b[2K")
@@ -79,9 +82,6 @@ class LineReader:
         del self.buffer[self.cursor_pos]
         self.redraw_line()
         print("Current buffer:", b"".join(self.buffer))
-  
-  def cleanup_terminal(self):
-    self.chan.send(b"\x1b[0m")
 
   def read(self):
     self.buffer = []
@@ -123,3 +123,6 @@ class LineReader:
         break
 
     return ""
+  
+  def cleanup_terminal(self):
+    self.chan.send(b"\x1bc")

@@ -23,8 +23,8 @@ def get_motd_lines(hostname):
     fallback_message = f"Welcome. (Host: 192.168.100.3 Time: {now})"
     return [fallback_message]
 
-def get_prompt(username, hostname):
-  prompt = f"{username}@{hostname}:~$ "
+def get_prompt(username, hostname, cwd="~"):
+  prompt = f"{username}@{hostname}:{cwd}$ "
   return prompt
 
 def get_cowrie_prompt(username, password):
@@ -66,16 +66,18 @@ def get_cowrie_prompt(username, password):
     return "~$ "
 
 def handle_session(chan, username, password):
-  commands = []
+  history = []
+  dir_cmd = ""
   cowrie_launched = False
 
   hostname = str(os.getenv('HOST_NAME'))[:9]
+  cwd = "~"
 
-  prompt = get_prompt(username, hostname)
+  prompt = get_prompt(username, hostname, cwd)
   reader = line_reader.LineReader(chan, prompt)
 
   motd_lines = get_motd_lines(hostname)
-  for i, line in enumerate(motd_lines):
+  for line in motd_lines:
     sent_line = line.rstrip() + "\r\n"
     chan.send(sent_line.encode("utf-8"))
     time.sleep(0.005)
@@ -91,7 +93,7 @@ def handle_session(chan, username, password):
         break
 
       if not cowrie_launched:
-        commands.append(cmd)
+        history.append(cmd)
 
         try:
           res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
@@ -105,11 +107,21 @@ def handle_session(chan, username, password):
           break
 
         cowrie_launched = True
-        output = connect_server.forward_to_cowrie(chan, username, password, commands)
+        print("foward to cowrie called")
+        output, cwd = connect_server.forward_to_cowrie(chan, username, password, history)
         chan.send(output.encode("utf-8"))
         continue
 
-      output = connect_server.execute_on_cowrie(cmd, username, password)
+      output, cwd = connect_server.execute_on_cowrie(cmd, username, password, dir_cmd)
+      print("execute on cowrie called")
+      if cwd != "~":
+        dir_cmd = f"cd {cwd}"
+      else:
+        dir_cmd = ""
+      prompt = get_prompt(username, hostname, cwd)
+      print(f"proxy prompt: {prompt}")
+      reader.update_prompt(prompt)
+      print(f"proxy cwd: {cwd}")
       chan.send(output.encode("utf-8"))
 
   except Exception as e:
