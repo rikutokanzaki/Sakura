@@ -49,7 +49,7 @@ def index():
 
 @bp.route('/api/logs/heralding', methods=['GET'])
 def get_heralding_logs():
-  file_path = os.path.join(os.path.dirname(__file__), '../data/heralding/log_session.json')
+  file_path = os.path.join(os.path.dirname(__file__), '/data/heralding/log_session.json')
 
   try:
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -63,7 +63,7 @@ def get_heralding_logs():
 
 @bp.route('/api/logs/h0neytr4p', methods=['GET'])
 def get_h0neytr4p_logs():
-  file_path = os.path.join(os.path.dirname(__file__), '../data/h0neytr4p/log/log.json')
+  file_path = os.path.join(os.path.dirname(__file__), '/data/h0neytr4p/log/log.json')
 
   try:
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -77,7 +77,7 @@ def get_h0neytr4p_logs():
 
 @bp.route('/api/logs/snare', methods=['GET'])
 def get_snare_logs():
-  file_path = os.path.join(os.path.dirname(__file__), '../data/tanner/log/tanner_report.json')
+  file_path = os.path.join(os.path.dirname(__file__), '/data/tanner/log/tanner_report.json')
 
   try:
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -91,7 +91,7 @@ def get_snare_logs():
 
 @bp.route('/api/logs/cowrie', methods=['GET'])
 def get_cowrie_logs():
-  file_path = os.path.join(os.path.dirname(__file__), '../data/cowrie/cowrie.json')
+  file_path = os.path.join(os.path.dirname(__file__), '/data/cowrie/cowrie.json')
 
   try:
     with open(file_path, 'r', encoding='utf-8') as f:
