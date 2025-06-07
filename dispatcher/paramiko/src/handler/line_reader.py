@@ -81,7 +81,7 @@ class LineReader:
         print("Current buffer:", b"".join(self.buffer))
   
   def cleanup_terminal(self):
-    self.chan.send(b"\x1bc")
+    self.chan.send(b"\x1b[0m")
 
   def read(self):
     self.buffer = []
