@@ -20,7 +20,8 @@ def get_motd_lines(hostname):
     return [line.format(now=now, hostname=formatted_hostname) for line in lines]
   except Exception as e:
     print(f"Failed to read motd file: {e}")
-    return f"Welcome. (Host: 192.168.100.3 Time: {now})\n"
+    fallback_message = f"Welcome. (Host: 192.168.100.3 Time: {now})"
+    return [fallback_message]
 
 def get_prompt(username, hostname):
   prompt = f"{username}@{hostname}:~$ "
@@ -75,10 +76,7 @@ def handle_session(chan, username, password):
 
   motd_lines = get_motd_lines(hostname)
   for i, line in enumerate(motd_lines):
-    is_last = (i == len(motd_lines) - 1)
-    sent_line = line.rstrip()
-    if not is_last:
-      sent_line += "\r\n"
+    sent_line = line.rstrip() + "\r\n"
     chan.send(sent_line.encode("utf-8"))
     time.sleep(0.005)
 
