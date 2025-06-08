@@ -107,21 +107,17 @@ def handle_session(chan, username, password):
           break
 
         cowrie_launched = True
-        print("foward to cowrie called")
         output, cwd = connect_server.forward_to_cowrie(chan, username, password, history)
         chan.send(output.encode("utf-8"))
         continue
 
       output, cwd = connect_server.execute_on_cowrie(cmd, username, password, dir_cmd)
-      print("execute on cowrie called")
       if cwd != "~":
         dir_cmd = f"cd {cwd}"
       else:
         dir_cmd = ""
       prompt = get_prompt(username, hostname, cwd)
-      print(f"proxy prompt: {prompt}")
       reader.update_prompt(prompt)
-      print(f"proxy cwd: {cwd}")
       chan.send(output.encode("utf-8"))
 
   except Exception as e:

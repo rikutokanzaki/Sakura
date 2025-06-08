@@ -75,7 +75,7 @@ def forward_to_cowrie(chan, username: str, password: str, history: list[str]):
     shell.close()
     client.close()
     return output, cwd
-  
+
   except Exception as e:
     print(f"Error forwarding to Cowrie: {e}\r\n")
     chan.close()
@@ -99,7 +99,6 @@ def _receive_until_prompt(shell, sent_cmd: str = "") -> bytes:
   try:
     while True:
       data = shell.recv(1024)
-      print(f"data: {data}")
       if not data:
         break
       output += data
@@ -124,8 +123,5 @@ def _receive_until_prompt(shell, sent_cmd: str = "") -> bytes:
   match = re.search(r"@[^:]+:(.*?)[\$#] ?", prompt_str)
   if match:
     cwd = match.group(1).strip()
-  
-  print(f"output_lines: {output_lines}")
-  print(f"cwd: {cwd}")
 
   return output_lines, cwd
