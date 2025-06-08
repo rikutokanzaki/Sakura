@@ -17,7 +17,8 @@ services:
       - .env
     volumes:
       - ${SAKURA_DATA_PATH}/openresty:/var/log/nginx
-  
+    restart: always
+
   paramiko:
     container_name: paramiko
     build: ./dispatcher/paramiko
@@ -29,6 +30,7 @@ services:
       - "22:22"
     env_file:
       - .env
+    restart: always
 
 
   ####################################
@@ -42,6 +44,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${SAKURA_DATA_PATH}:/data
+    restart: always
 
 
   ####################################
@@ -62,7 +65,7 @@ services:
       - /tmp/heralding:uid=2000,gid=2000
     restart: always
     read_only: true
-  
+
   ##############
   ## Passive 
   ##############
@@ -74,6 +77,7 @@ services:
     volumes:
       - ${SAKURA_DATA_PATH}/h0neytr4p/log/:/opt/h0neytr4p/log/
       - ${SAKURA_DATA_PATH}/h0neytr4p/payloads/:/data/h0neytr4p/payloads/
+    restart: always
 
   ### SSH ###
   cowrie:
@@ -85,6 +89,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - COWRIE_TTYLOG_ENABLED=yes
+    restart: always
 
 
   ####################################
@@ -178,6 +183,7 @@ services:
       - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
       - xpack.security.transport.ssl.verification_mode=certificate
       - xpack.license.self_generated.type=${LICENSE}
+    restart: always
     networks:
       - elastic
     mem_limit: ${ES_MEM_LIMIT}
@@ -212,6 +218,7 @@ services:
       - XPACK_SECURITY_ENCRYPTIONKEY=${ENCRYPTION_KEY}
       - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${ENCRYPTION_KEY}
       - XPACK_REPORTING_ENCRYPTIONKEY=${ENCRYPTION_KEY}
+    restart: always
     networks:
       - elastic
     mem_limit: ${KB_MEM_LIMIT}
@@ -243,6 +250,7 @@ services:
       - ELASTIC_HOSTS=https://elasticsearch:9200
       - KIBANA_HOSTS=http://kibana:5601
       - LOGSTASH_HOSTS=http://logstash:9600
+    restart: always
     networks:
       - elastic
 
@@ -269,6 +277,7 @@ services:
       - ELASTIC_USER=elastic
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - ELASTIC_HOSTS=https://elasticsearch:9200
+    restart: always
     networks:
       - elastic
 
