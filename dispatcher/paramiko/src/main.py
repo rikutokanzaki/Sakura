@@ -3,7 +3,7 @@ import threading
 import paramiko
 from auth import auth_user
 from connector import connect_server
-from handler import session_manager
+from session import handler
 
 HOST = "0.0.0.0"
 PORT = 22
@@ -81,7 +81,7 @@ def start_proxy():
         password = server.password
 
         threading.Thread(
-          target=session_manager.handle_session,
+          target=handler.handle_session,
           args=(chan, username, password),
           daemon=True
         ).start()
