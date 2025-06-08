@@ -52,7 +52,7 @@ services:
   ####################################
 
   ##############
-  ## Active 
+  ## Active
   ##############
 
   ### HTTP, SSH ###
@@ -67,7 +67,7 @@ services:
     read_only: true
 
   ##############
-  ## Passive 
+  ## Passive
   ##############
 
   ### HTTP ###
