@@ -35,7 +35,7 @@ function renderLogs(honeypotName, logs, logCount, tableId) {
   headerRow += '</tr>';
   table.innerHTML = headerRow;
 
-  const displayLogs = logCount === 'all' ? logs : logs.slice(-parseInt(logCount));
+  const displayLogs = logs.slice(-parseInt(logCount));
 
   displayLogs.forEach(log => {
     const row = document.createElement('tr');
@@ -46,8 +46,16 @@ function renderLogs(honeypotName, logs, logCount, tableId) {
 
 function loadAndRenderLogs(honeypotName, tableId, selectId) {
   fetch(`/api/logs/${honeypotName}`)
-    .then(response => response.json())
+    .then(response =>{
+      if (response.status === 404) {
+        const logCount = document.getElementById(selectId).value;
+        renderLogs(honeypotName, [], logCount, tableId)
+        return null
+      }
+      return response.json()
+    })
     .then(logs => {
+      if (!logs) return;
       const logCount = document.getElementById(selectId).value;
       renderLogs(honeypotName, logs, logCount, tableId);
 
@@ -80,11 +88,11 @@ window.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify({ honeypotName: selectedHoneypot })
     })
     .then(response => {
-      if (!response.ok) throw new Error('Failed to launch honeypotName');
+      if (!response.ok) throw new Error(`Failed to launch ${selectedHoneypot}`);
       return response.text();
     })
     .then(data => {
-      console.log('Succeed to launch honeypotName:', data);
+      console.log(`Succeed to launch ${selectedHoneypot}:`, data);
       alert(`Request to launch ${selectedHoneypot} has been sent.`);
     })
     .catch(error => {
