@@ -16,7 +16,7 @@ def get_motd_lines(hostname):
   try:
     with open(motd_file_path, "r", encoding="utf-8") as f:
       lines = f.readlines()
-    
+
     return [line.format(now=now, hostname=formatted_hostname) for line in lines]
   except Exception as e:
     print(f"Failed to read motd file: {e}")

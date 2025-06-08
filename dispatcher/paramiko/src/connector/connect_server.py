@@ -27,7 +27,7 @@ def execute_on_heralding(command: str, username: str, password: str) -> str:
 
   except Exception as e:
     return f"Heralding error: {e}\r\n"
-  
+
 def execute_on_cowrie(command: str, username: str, password: str, dir_cmd) -> str:
   try:
     client = paramiko.SSHClient()
@@ -59,7 +59,7 @@ def forward_to_cowrie(chan, username: str, password: str, history: list[str]):
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect("cowrie", port=2222, username=username, password=password, timeout=10)
-    
+
     shell = client.invoke_shell()
     shell.settimeout(5)
 
@@ -88,7 +88,7 @@ def _wait_for_prompt(shell):
         break
       if b"$ " in data or b"# " in data:
         break
-  
+
   except Exception:
     pass
 
@@ -115,7 +115,7 @@ def _receive_until_prompt(shell, sent_cmd: str = "") -> bytes:
     if sent_cmd.encode("utf-8") in line.strip():
       continue
     cleaned_lines.append(line)
-  
+
   output_lines = b"\n".join(cleaned_lines).decode("utf-8", errors="ignore")
 
   cwd = "~"

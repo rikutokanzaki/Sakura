@@ -34,7 +34,7 @@ for addr in allowed_networks:
     continue
   except ValueError:
     pass
-  
+
   try:
     ip = socket.gethostbyname(addr)
     network = ipaddress.ip_network(f"{ip}/32", strict=False)
@@ -108,7 +108,7 @@ def trigger_h0neytr4p():
     if not docker_manager.is_service_running("h0neytr4p"):
       docker_manager.unpause_services(["h0neytr4p"])
     session_manager.update_session("h0neytr4p")
-  
+
   return "SSH Honeypot Triggered", 200
 
 @bp.route('/trigger/snare', methods=['POST'])
@@ -119,7 +119,7 @@ def trigger_snare():
     if not docker_manager.is_service_running("snare"):
       docker_manager.unpause_services(["snare","tanner_redis", "tanner_phpox", "tanner_api", "tanner"])
     session_manager.update_session("snare")
-  
+
   return "HTTP Honeypot Triggered", 200
 
 @bp.route('/trigger/cowrie', methods=['POST'])
@@ -130,7 +130,7 @@ def trigger_cowrie():
     if not docker_manager.is_service_running("cowrie"):
       docker_manager.unpause_services(["cowrie"])
     session_manager.update_session("cowrie")
-  
+
   return "SSH Honeypot Triggered", 200
 
 @bp.before_request

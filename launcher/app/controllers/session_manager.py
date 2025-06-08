@@ -27,11 +27,11 @@ class ServiceSession:
 
   def is_active(self):
     return self._session_active.is_set()
-  
+
   def stop(self):
     self._stop_observer.set()
     self._session_active.set()
-  
+
   def session_observer(self):
     while not self._stop_observer.is_set():
       self._session_active.clear()
@@ -54,7 +54,7 @@ class ServiceSession:
 
       print(f"[INFO] Waiting for new session to reactive for {self.service_names}...")
       self._session_active.wait()
-  
+
 def update_session(service_name: str):
   with _services_lock:
     if service_name not in _services:
@@ -67,7 +67,7 @@ def update_session(service_name: str):
 def is_session_active(service_name: str):
   with _services_lock:
     return _services.get(service_name, None) and _services[service_name].is_active()
-  
+
 def stop_all_sessions():
   with _services_lock:
     for session in _services.values():

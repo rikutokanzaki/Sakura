@@ -11,9 +11,9 @@ class Authenticator:
           user, passwd = line.split(":", 1)
           self.rules.append((user, passwd))
     except FileNotFoundError:
-      print(f"user file '{user_file}' not found.")
+      print(f"User file '{user_file}' not found.")
       self.rules = []
-  
+
   def authenticate(self, username: str, password: str) -> bool:
     for rule_user, rule_pass in self.rules:
       if rule_user == username or rule_user == "*":

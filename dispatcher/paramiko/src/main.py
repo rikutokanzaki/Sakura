@@ -14,7 +14,7 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.username = None
     self.password = None
     self.authenticator = auth_user.Authenticator()
-  
+
   def check_auth_password(self, username, password):
     self.username = username
     self.password = password
@@ -28,18 +28,18 @@ class SSHProxyServer(paramiko.ServerInterface):
       return paramiko.AUTH_SUCCESSFUL
     else:
       return paramiko.AUTH_FAILED
-  
+
   def check_channel_request(self, kind, chanid):
     if kind == "session":
       return paramiko.OPEN_SUCCEEDED
     return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
-  
+
   def check_channel_pty_request(self, channel, term, width, height, pixelwidth, pixelheight, modes):
     return True
-  
+
   def check_channel_shell_request(self, channel):
     return True
-  
+
   def check_channel_exec_request(self, channel, command):
     return True
 
@@ -85,7 +85,7 @@ def start_proxy():
           args=(chan, username, password),
           daemon=True
         ).start()
-    
+
       except EOFError:
         print("Client closed connection after authentication (EOF)")
       except Exception as e:

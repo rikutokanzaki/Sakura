@@ -9,10 +9,10 @@ class CowrieLogObserver:
     self.poll_interval = poll_interval
     self._last_size = 0
     self._thread = threading.Thread(target=self._observe_log, daemon=True)
-  
+
   def start(self):
     self._thread.start()
-  
+
   def _observe_log(self):
     file_missing_logged = False
     while True:
