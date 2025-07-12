@@ -76,7 +76,10 @@ class LineReader:
 
       if t == b"~" and self.cursor_pos < len(self.buffer):
         del self.buffer[self.cursor_pos]
-        self.redraw_line()
+        if self.cursor_pos == len(self.buffer):
+          self.chan.send(b" \b")
+        else:
+          self.redraw_line()
 
   def read(self):
     self.buffer = []
@@ -116,7 +119,7 @@ class LineReader:
         self.buffer.insert(self.cursor_pos, data)
         self.cursor_pos += 1
 
-        if self.cursor_pos != len(self.buffer):
+        if self.cursor_pos == len(self.buffer):
           self.chan.send(data)
         else:
           self.redraw_line()
