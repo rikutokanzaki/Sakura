@@ -83,7 +83,7 @@ class LineReader:
     self.cursor_pos = 0
     self.history_index = -1
     self.chan.send(b"\r\x1b[2K")
-    self.redraw_line()
+    self.chan.send(self.prompt.encode("utf-8"))
 
     while True:
       try:
@@ -108,12 +108,18 @@ class LineReader:
           if self.cursor_pos > 0:
             del self.buffer[self.cursor_pos - 1]
             self.cursor_pos -= 1
-            self.redraw_line()
+            self.chan.send(b"\b \b")
+            if self.cursor_pos != len(self.buffer):
+              self.redraw_line()
           continue
 
         self.buffer.insert(self.cursor_pos, data)
         self.cursor_pos += 1
-        self.redraw_line()
+
+        if self.cursor_pos != len(self.buffer):
+          self.chan.send(data)
+        else:
+          self.redraw_line()
 
       except Exception as e:
         break

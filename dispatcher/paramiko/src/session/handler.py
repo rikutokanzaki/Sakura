@@ -31,7 +31,7 @@ def handle_session(chan, username, password):
       if not cmd:
         continue
 
-      if cmd.lower() in ["exit", "quit"]:
+      if cmd.lower() in ["exit", "quit", "exit;", "quit;"]:
         break
 
       if not cowrie_launched:
