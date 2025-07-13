@@ -1,3 +1,4 @@
+from utils import ansi_sequences
 import paramiko
 import re
 
@@ -26,7 +27,7 @@ def execute_on_heralding(command: str, username: str, password: str) -> str:
     return output.decode("utf-8", errors="ignore")
 
   except Exception as e:
-    return f"Heralding error: {e}\r\n"
+    return f"Error: {e}\r\n"
 
 def execute_on_cowrie(command: str, username: str, password: str, dir_cmd) -> str:
   try:
@@ -52,7 +53,7 @@ def execute_on_cowrie(command: str, username: str, password: str, dir_cmd) -> st
     return output, cwd
 
   except Exception as e:
-    return f"Cowrie error: {e}\r\n", "~"
+    return f"Error: {e}\r\n", "~"
 
 def forward_to_cowrie(chan, username: str, password: str, history: list[str]):
   try:
@@ -111,10 +112,22 @@ def _receive_until_prompt(shell, sent_cmd: str = "") -> bytes:
   lines = output.split(b"\n")
   cleaned_lines = []
 
-  for line in lines:
+  for i, line in enumerate(lines):
     if sent_cmd.encode("utf-8") in line.strip():
       continue
-    cleaned_lines.append(line)
+
+    if i == len(lines) - 1:
+      try:
+        line_str = line.decode("utf-8", errors="ignore")
+        prompt_str = prompt_line.decode("utf-8", errors="ignore").strip()
+        cleaned_line_str = ansi_sequences.remove_prompt(line_str)
+        cleaned_lines.append(cleaned_line_str.encode("utf-8"))
+
+      except Exception:
+        cleaned_lines.append(line)
+
+    else:
+      cleaned_lines.append(line)
 
   output_lines = b"\n".join(cleaned_lines).decode("utf-8", errors="ignore")
 

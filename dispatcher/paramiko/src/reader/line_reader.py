@@ -5,29 +5,42 @@ class LineReader:
     self.buffer = []
     self.cursor_pos = 0
     self.escape_seq = b""
+    self.prev_rendered_len = 0
     self.history = []
     self.history_index = -1
 
   def update_prompt(self, new_prompt):
     self.prompt = new_prompt
 
-  def redraw_line(self):
-    self.chan.send(b"\r\x1b[2K")
-
+  def send_prompt(self):
     self.chan.send(self.prompt.encode("utf-8"))
-    self.chan.send(b"".join(self.buffer))
 
-    back_steps = len(self.buffer) - self.cursor_pos
-    if back_steps:
-      self.chan.send(f"\x1b[{back_steps}D".encode("utf-8"))
+  def redraw_buffer(self):
+    self.chan.send(b"\r")
+    self.send_prompt()
+
+    rendered = (b"".join(self.buffer))
+    self.chan.send(rendered)
+
+    if self.prev_rendered_len > len(self.buffer):
+      diff = self.prev_rendered_len - len(self.buffer)
+      self.chan.send(b" " * diff)
+      self.chan.send(f"\x1b[{diff}D".encode())
+
+    back = len(rendered) - self.cursor_pos
+    if back > 0:
+      self.chan.send(f"\x1b[{back}D".encode())
+
+    self.prev_rendered_len = len(self.buffer)
 
   def set_buffer_from_history(self):
     if 0 <= self.history_index < len(self.history):
       self.buffer = [c.encode("utf-8") for c in self.history[self.history_index]]
       self.cursor_pos = len(self.buffer)
+      self.redraw_buffer()
+      self.prev_rendered_len = len(self.buffer)
     else:
       print("Invalid history index")
-    self.redraw_line()
 
   def handle_escape_sequence(self):
     try:
@@ -51,8 +64,6 @@ class LineReader:
       if self.history and self.history_index < len(self.history) - 1:
         self.history_index += 1
         self.set_buffer_from_history()
-      elif self.history_index == len(self.history) - 1:
-        pass
 
     # RIGHT
     elif seq == b"[C":
@@ -70,23 +81,24 @@ class LineReader:
     elif seq == b"[3":
       try:
         t = self.chan.recv(1)
+        if t == b"~" and self.cursor_pos < len(self.buffer):
+          del self.buffer[self.cursor_pos]
+          if self.cursor_pos == len(self.buffer):
+            self.chan.send(b" \b")
+          else:
+            remainder = b"".join(self.buffer[self.cursor_pos:]) + b" "
+            self.chan.send(remainder)
+            self.chan.send(f"\x1b[{len(remainder)}D".encode())
       except Exception as e:
         print(f"Failed to read escape sequence: {e}")
         return
-
-      if t == b"~" and self.cursor_pos < len(self.buffer):
-        del self.buffer[self.cursor_pos]
-        if self.cursor_pos == len(self.buffer):
-          self.chan.send(b" \b")
-        else:
-          self.redraw_line()
 
   def read(self):
     self.buffer = []
     self.cursor_pos = 0
     self.history_index = -1
     self.chan.send(b"\r\x1b[2K")
-    self.chan.send(self.prompt.encode("utf-8"))
+    self.send_prompt()
 
     while True:
       try:
@@ -111,9 +123,12 @@ class LineReader:
           if self.cursor_pos > 0:
             del self.buffer[self.cursor_pos - 1]
             self.cursor_pos -= 1
-            self.chan.send(b"\b \b")
-            if self.cursor_pos != len(self.buffer):
-              self.redraw_line()
+            if self.cursor_pos == len(self.buffer):
+              self.chan.send(b"\b \b")
+            else:
+              remainder = b"".join(self.buffer[self.cursor_pos:]) + b" "
+              self.chan.send(b"\b" + remainder)
+              self.chan.send(f"\x1b[{len(remainder)}D".encode())
           continue
 
         self.buffer.insert(self.cursor_pos, data)
@@ -122,9 +137,11 @@ class LineReader:
         if self.cursor_pos == len(self.buffer):
           self.chan.send(data)
         else:
-          self.redraw_line()
+          remainder = b"".join(self.buffer[self.cursor_pos - 1:])
+          self.chan.send(remainder)
+          self.chan.send(f"\x1b[{len(remainder) - 1}D".encode())
 
-      except Exception as e:
+      except Exception:
         break
 
     return ""
