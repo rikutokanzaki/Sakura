@@ -14,13 +14,14 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.username = None
     self.password = None
     self.authenticator = auth_user.Authenticator()
+    self.heralding_connector = connect_server.SSHConnector(host="heralding")
 
   def check_auth_password(self, username, password):
     self.username = username
     self.password = password
 
     try:
-      connect_server.record_in_heralding(username=username, password=password)
+      self.heralding_connector.record_login(username=username, password=password)
     except Exception as e:
       pass
 

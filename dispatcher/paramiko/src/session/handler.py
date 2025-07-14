@@ -15,8 +15,11 @@ def handle_session(chan, username, password):
   hostname = str(os.getenv('HOST_NAME'))[:9]
   cwd = "~"
 
-  prompt = set_prompt.get_prompt(username, hostname, cwd)
+  prompt_manager = set_prompt.PromptManager()
+  prompt = prompt_manager.get_prompt(username, hostname, cwd)
   reader = line_reader.LineReader(chan, prompt)
+
+  cowrie_connector = connect_server.SSHConnector(host="cowrie", port=2222)
 
   motd_lines = set_motd.get_motd_lines(hostname)
   for line in motd_lines:
@@ -49,17 +52,17 @@ def handle_session(chan, username, password):
           break
 
         cowrie_launched = True
-        output, cwd = connect_server.forward_to_cowrie(chan, username, password, history)
+        output, cwd = cowrie_connector.replay_history(chan, username, password, history)
         clean_output = ansi_sequences.strip_ansi_sequences(output)
         chan.send(clean_output.encode("utf-8"))
         continue
 
-      output, cwd = connect_server.execute_on_cowrie(cmd, username, password, dir_cmd)
+      output, cwd = cowrie_connector.execute_command(cmd, username, password, dir_cmd)
       if cwd != "~":
         dir_cmd = f"cd {cwd}"
       else:
         dir_cmd = ""
-      prompt = set_prompt.get_prompt(username, hostname, cwd)
+      prompt = prompt_manager.get_prompt(username, hostname, cwd)
       reader.update_prompt(prompt)
       clean_output = ansi_sequences.strip_ansi_sequences(output)
       chan.send(clean_output.encode("utf-8"))

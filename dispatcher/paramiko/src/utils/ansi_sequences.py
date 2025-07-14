@@ -6,10 +6,10 @@ def strip_ansi_sequences(text):
   return ANSI_ESCAPE_RE.sub("", text)
 
 def remove_prompt(text: str) -> str:
-    matches = list(re.finditer(r'\x1b\[4.', text))
-    if not matches:
-        return text
+  matches = list(re.finditer(r'\x1b\[4.', text))
+  if not matches:
+    return text
 
-    last_match = matches[-1]
-    cut_index = last_match.start()
-    return text[:cut_index].rstrip()
+  last_match = matches[-1]
+  cut_index = last_match.start()
+  return text[:cut_index].rstrip()
