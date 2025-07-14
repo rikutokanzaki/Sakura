@@ -13,32 +13,6 @@ class SSHConnector:
     client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
     client.close()
 
-  def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
-    try:
-      client = paramiko.SSHClient()
-      client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-      client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
-
-      shell = client.invoke_shell()
-      shell.settimeout(5)
-
-      self._wait_for_prompt(shell)
-
-      if dir_cmd:
-        shell.send(dir_cmd + "\n")
-        self._wait_for_prompt(shell)
-
-      shell.send(command + "\n")
-      output, cwd = self._receive_until_prompt(shell, command)
-
-      shell.close()
-      client.close()
-
-      return output, cwd
-
-    except Exception as e:
-      return f"Error: {e}\r\n", "~"
-
   def replay_history(self, chan, username: str, password: str, history: list[str]):
     try:
       client = paramiko.SSHClient()
@@ -66,6 +40,32 @@ class SSHConnector:
     except Exception as e:
       print(f"Error forwarding to {self.host}: {e}\r\n")
       chan.close()
+
+  def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
+    try:
+      client = paramiko.SSHClient()
+      client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+      client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+
+      shell = client.invoke_shell()
+      shell.settimeout(5)
+
+      self._wait_for_prompt(shell)
+
+      if dir_cmd:
+        shell.send(dir_cmd + "\n")
+        self._wait_for_prompt(shell)
+
+      shell.send(command + "\n")
+      output, cwd = self._receive_until_prompt(shell, command)
+
+      shell.close()
+      client.close()
+
+      return output, cwd
+
+    except Exception as e:
+      return f"Error: {e}\r\n", "~"
 
   def _wait_for_prompt(self, shell):
     try:
