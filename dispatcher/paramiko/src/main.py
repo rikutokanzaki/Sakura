@@ -4,6 +4,7 @@ import paramiko
 from auth import auth_user
 from connector import connect_server
 from session import handler
+from utils import log_event
 
 HOST = "0.0.0.0"
 PORT = 22
@@ -25,10 +26,10 @@ class SSHProxyServer(paramiko.ServerInterface):
     except Exception as e:
       pass
 
-    if self.authenticator.authenticate(username, password):
-      return paramiko.AUTH_SUCCESSFUL
-    else:
-      return paramiko.AUTH_FAILED
+    auth_success = self.authenticator.authenticate(username, password)
+    log_event.log_auth_event(self.client_addr, HOST, PORT, username, password, auth_success)
+
+    return paramiko.AUTH_SUCCESSFUL if auth_success else paramiko.AUTH_FAILED
 
   def check_channel_request(self, kind, chanid):
     if kind == "session":
@@ -59,6 +60,7 @@ def start_proxy():
       host_key = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
       transport.add_server_key(host_key)
       server = SSHProxyServer()
+      server.client_addr = addr
 
       try:
         transport.start_server(server=server)

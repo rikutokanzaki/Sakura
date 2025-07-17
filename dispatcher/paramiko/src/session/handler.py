@@ -2,7 +2,7 @@ from session import set_prompt
 from reader import line_reader
 from utils import set_motd
 from connector import connect_server
-from utils import ansi_sequences
+from utils import ansi_sequences, log_event
 import os
 import time
 import requests
@@ -33,6 +33,13 @@ def handle_session(chan, username, password):
 
       if not cmd:
         continue
+
+      try:
+        src_ip, src_port = chan.getpeername()
+      except:
+        src_ip, src_port = "unknown", 0
+
+      log_event.log_command_event(src_ip, src_port, username, cmd, cwd)
 
       if cmd.lower() in ["exit", "quit", "exit;", "quit;"]:
         break
