@@ -30,6 +30,8 @@ services:
       - "22:22"
     env_file:
       - .env
+    volumes:
+      - ${SAKURA_DATA_PATH}/paramiko:/var/log/paramiko
     restart: always
 
 
