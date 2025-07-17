@@ -2,7 +2,7 @@ import time
 import threading
 from app.controllers import docker_manager
 
-SESSION_TIMEOUT = 60
+SESSION_TIMEOUT = 300
 
 _services = {}
 _services_lock = threading.Lock()
