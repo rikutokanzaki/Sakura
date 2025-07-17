@@ -1,8 +1,8 @@
 function getPreferredOrder(honeypotName) {
   if (honeypotName == 'paramiko') {
-    return ['timestamp'];
+    return ['timestamp', 'src_ip', 'src_port', 'eventid', 'command', 'username', 'password'];
   } else if (honeypotName == 'heralding') {
-    return ['timestamp', 'destination_ip', 'source_ip', 'source_port', 'request_uri', 'destination_port'];
+    return ['timestamp', 'source_ip', 'source_port', 'request_uri'];
   } else if (honeypotName === 'h0neytr4p') {
     return ['timestamp', 'header_x-real-ip', 'header_x-forwarded-for', 'src_ip', 'request_method', 'request_uri'];
   } else if (honeypotName === 'snare') {
