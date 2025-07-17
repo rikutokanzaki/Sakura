@@ -7,7 +7,7 @@ import os
 import time
 import requests
 
-def handle_session(chan, username, password):
+def handle_session(chan, username, password, addr, start_time):
   history = []
   dir_cmd = ""
   cowrie_launched = False
@@ -76,6 +76,15 @@ def handle_session(chan, username, password):
 
   except Exception as e:
     print(f"Error handling session: {e}")
+
   finally:
+    duration = time.time() - start_time
+    log_event.log_session_close(
+      src_ip=addr[0],
+      src_port=addr[1],
+      username=username,
+      duration=duration,
+      message="Session closed"
+    )
     reader.cleanup_terminal()
     chan.close()

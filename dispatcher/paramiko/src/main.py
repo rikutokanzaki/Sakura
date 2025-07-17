@@ -1,10 +1,11 @@
-import socket
-import threading
-import paramiko
 from auth import auth_user
 from connector import connect_server
 from session import handler
 from utils import log_event
+import socket
+import threading
+import paramiko
+import time
 
 HOST = "0.0.0.0"
 PORT = 22
@@ -83,9 +84,11 @@ def start_proxy():
         username = server.username
         password = server.password
 
+        start_time = time.time()
+
         threading.Thread(
           target=handler.handle_session,
-          args=(chan, username, password),
+          args=(chan, username, password, addr, start_time),
           daemon=True
         ).start()
 

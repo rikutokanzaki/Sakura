@@ -33,3 +33,18 @@ def log_command_event(src_ip, src_port, username, command, cwd):
   }
   with open("/var/log/paramiko/paramiko.log", "a") as f:
     f.write(json.dumps(log) + "\n")
+
+def log_session_close(src_ip, src_port, username, duration, message):
+  log = {
+    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    "type": "Paramiko",
+    "eventid": "paramiko.session.close",
+    "src_ip": src_ip,
+    "src_port": src_port,
+    "username": username,
+    "duration": f"{round(duration, 2)}s",
+    "message": message,
+    "protocol": "ssh"
+  }
+  with open("/var/log/paramiko/paramiko.log", "a") as f:
+    f.write(json.dumps(log) + "\n")
