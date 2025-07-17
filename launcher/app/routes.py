@@ -47,6 +47,34 @@ for addr in allowed_networks:
 def index():
   return render_template("index.html")
 
+@bp.route('/api/logs/openresty', methods=['GET'])
+def get_openresty_logs():
+  file_path = os.path.join(os.path.dirname(__file__), '/data/openresty/access.log')
+
+  try:
+    with open(file_path, 'r', encoding='utf-8') as f:
+      logs = [json.loads(line) for line in f if line.strip()]
+
+    flat_logs = [flatten.flatten_dict(log) for log in logs]
+
+    return jsonify(flat_logs)
+  except FileNotFoundError:
+    return jsonify({'error': 'log.json not found'}), 404
+
+@bp.route('/api/logs/paramiko', methods=['GET'])
+def get_paramiko_logs():
+  file_path = os.path.join(os.path.dirname(__file__), '/data/paramiko/paramiko.log')
+
+  try:
+    with open(file_path, 'r', encoding='utf-8') as f:
+      logs = [json.loads(line) for line in f if line.strip()]
+
+    flat_logs = [flatten.flatten_dict(log) for log in logs]
+
+    return jsonify(flat_logs)
+  except FileNotFoundError:
+    return jsonify({'error': 'log.json not found'}), 404
+
 @bp.route('/api/logs/heralding', methods=['GET'])
 def get_heralding_logs():
   file_path = os.path.join(os.path.dirname(__file__), '/data/heralding/log_session.json')

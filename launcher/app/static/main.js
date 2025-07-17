@@ -1,5 +1,7 @@
 function getPreferredOrder(honeypotName) {
-  if (honeypotName == 'heralding') {
+  if (honeypotName == 'paramiko') {
+    return ['timestamp'];
+  } else if (honeypotName == 'heralding') {
     return ['timestamp', 'destination_ip', 'source_ip', 'source_port', 'request_uri', 'destination_port'];
   } else if (honeypotName === 'h0neytr4p') {
     return ['timestamp', 'header_x-real-ip', 'header_x-forwarded-for', 'src_ip', 'request_method', 'request_uri'];
@@ -71,6 +73,7 @@ function loadAndRenderLogs(honeypotName, tableId, selectId) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  loadAndRenderLogs('paramiko', 'paramikoTable', 'logCountSelectParamiko');
   loadAndRenderLogs('heralding', 'heraldingTable', 'logCountSelectHeralding');
   loadAndRenderLogs('h0neytr4p', 'h0neytr4pTable', 'logCountSelectH0neytr4p');
   loadAndRenderLogs('snare', 'snareTable', 'logCountSelectSnare');
