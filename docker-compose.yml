@@ -210,7 +210,7 @@ services:
     volumes:
       - certs:/usr/share/kibana/config/certs
     ports:
-      - 64296:5601
+      - 64297:5601
     environment:
       - SERVERNAME=kibana
       - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
