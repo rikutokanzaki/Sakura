@@ -1,6 +1,7 @@
+from utils import ansi_sequences
 import paramiko
 import re
-from utils import ansi_sequences
+import time
 
 class SSHConnector:
   def __init__(self, host: str, port: int = 22):
@@ -41,6 +42,30 @@ class SSHConnector:
       print(f"Error forwarding to {self.host}: {e}\r\n")
       chan.close()
 
+  def replay_cwd_only(self, username: str, password: str, history: list[str]) -> str:
+    try:
+      client = paramiko.SSHClient()
+      client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+      client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+
+      shell = client.invoke_shell()
+      shell.settimeout(5)
+
+      self._wait_for_prompt(shell)
+
+      for cmd in history:
+        if cmd.startswith("cd "):
+          shell.send(cmd + "\n")
+          _, cwd = self._receive_until_prompt(shell, cmd)
+
+      shell.close()
+      client.close()
+
+      return cwd
+
+    except Exception as e:
+      return "~"
+
   def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
     try:
       client = paramiko.SSHClient()
@@ -66,6 +91,58 @@ class SSHConnector:
 
     except Exception as e:
       return f"Error: {e}\r\n", "~"
+
+  def execute_with_tab(self, cwd, command: str, username: str, password: str):
+    try:
+      client = paramiko.SSHClient()
+      client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+      client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+
+      shell = client.invoke_shell()
+      shell.settimeout(5)
+
+      self._wait_for_prompt(shell)
+
+      shell.send(f"cd {cwd}\n")
+      self._wait_for_prompt(shell)
+
+      raw_command = command.replace("\t", "")
+      shell.send(raw_command + "\t")
+      time.sleep(0.2)
+
+      output = b""
+      start_time = time.time()
+      timeout = 1
+
+      while True:
+        try:
+          if shell.recv_ready():
+            chunk = shell.recv(1024)
+            output += chunk
+            decoded = output.decode("utf-8", errors="ignore")
+            cleaned = ansi_sequences.strip_ansi_sequences(decoded)
+
+            if raw_command in cleaned:
+              index = cleaned.rfind(raw_command)
+              if index != -1 and len(cleaned) > index + len(raw_command):
+                break
+
+          if time.time() - start_time > timeout:
+            break
+          time.sleep(0.05)
+
+        except Exception:
+          break
+
+      output_chars = output.decode("utf-8", errors="ignore")
+
+      shell.close()
+      client.close()
+
+      return command, output_chars
+
+    except Exception as e:
+      return "", ""
 
   def _wait_for_prompt(self, shell):
     try:
@@ -114,7 +191,6 @@ class SSHConnector:
     output_lines = b"\n".join(cleaned_lines).decode("utf-8", errors="ignore")
 
     cwd = "~"
-    prompt_str = prompt_line.decode("utf-8", errors="ignore").strip()
     match = re.search(r"@[^:]+:(.*?)[\$#] ?", prompt_str)
     if match:
       cwd = match.group(1).strip()

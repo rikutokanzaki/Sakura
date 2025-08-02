@@ -13,3 +13,12 @@ def remove_prompt(text: str) -> str:
   last_match = matches[-1]
   cut_index = last_match.start()
   return text[:cut_index].rstrip()
+
+def extract_command(text: str) -> str:
+  cleaned = strip_ansi_sequences(text)
+
+  match = re.search(r'[$#]\s*(.*)', cleaned)
+  if match:
+    return match.group(1).strip()
+
+  return ""

@@ -17,7 +17,7 @@ def handle_session(chan, username, password, addr, start_time):
 
   prompt_manager = set_prompt.PromptManager()
   prompt = prompt_manager.get_prompt(username, hostname, cwd)
-  reader = line_reader.LineReader(chan, prompt)
+  reader = line_reader.LineReader(chan, username, password, prompt, history)
 
   cowrie_connector = connect_server.SSHConnector(host="cowrie", port=2222)
 

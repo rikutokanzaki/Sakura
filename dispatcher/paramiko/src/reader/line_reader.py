@@ -1,12 +1,17 @@
+from connector import connect_server
+from utils import ansi_sequences, extract_chars
+
 class LineReader:
-  def __init__(self, chan, prompt=""):
+  def __init__(self, chan, username, password, prompt="", history=[]):
     self.chan = chan
+    self.username = username
+    self.password = password
     self.prompt = prompt
     self.buffer = []
     self.cursor_pos = 0
     self.escape_seq = b""
     self.prev_rendered_len = 0
-    self.history = []
+    self.history = history
     self.history_index = -1
 
   def update_prompt(self, new_prompt):
@@ -31,7 +36,7 @@ class LineReader:
     if back > 0:
       self.chan.send(f"\x1b[{back}D".encode())
 
-    self.prev_rendered_len = len(self.buffer)
+    self.prev_rendered_len = len(rendered)
 
   def set_buffer_from_history(self):
     if 0 <= self.history_index < len(self.history):
@@ -41,6 +46,47 @@ class LineReader:
       self.prev_rendered_len = len(self.buffer)
     else:
       print("Invalid history index")
+
+  def handle_tab_completion(self):
+    full_input = b"".join(self.buffer).decode("utf-8", errors="ignore")
+    tokens = full_input.strip().split()
+    if not tokens:
+      return
+
+    last_token = tokens[-1]
+
+    command_with_tab = full_input + "\t"
+
+    cowrie_connector = connect_server.SSHConnector(host="cowrie", port=2222)
+    cwd = cowrie_connector.replay_cwd_only(
+      username=self.username,
+      password=self.password,
+      history=self.history
+    )
+
+    command, output_chars = cowrie_connector.execute_with_tab(
+      cwd,
+      command_with_tab,
+      self.username,
+      self.password
+    )
+
+    output_chars_clean = ansi_sequences.strip_ansi_sequences(output_chars)
+    completed_command = extract_chars.get_completion_diff(command.strip(), output_chars_clean.strip())
+    completion_diff = completed_command[len(command.strip()):]
+
+    if completion_diff:
+      buffer_str = b''.join(self.buffer).decode("utf-8", errors="ignore")
+      token_start = buffer_str.rfind(last_token)
+
+      if token_start != -1:
+        insertion_index = token_start + len(last_token)
+        for ch in completion_diff:
+          self.buffer.insert(insertion_index, ch.encode('utf-8'))
+          insertion_index += 1
+        self.cursor_pos = insertion_index
+
+        self.redraw_buffer()
 
   def handle_escape_sequence(self):
     try:
@@ -129,6 +175,11 @@ class LineReader:
               remainder = b"".join(self.buffer[self.cursor_pos:]) + b" "
               self.chan.send(b"\b" + remainder)
               self.chan.send(f"\x1b[{len(remainder)}D".encode())
+          continue
+
+        # TAB
+        if data == b"\t":
+          self.handle_tab_completion()
           continue
 
         self.buffer.insert(self.cursor_pos, data)
