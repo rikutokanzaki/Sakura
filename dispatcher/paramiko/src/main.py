@@ -11,12 +11,13 @@ HOST = "0.0.0.0"
 PORT = 22
 
 class SSHProxyServer(paramiko.ServerInterface):
-  def __init__(self):
+  def __init__(self, client_addr):
     self.event = threading.Event()
     self.username = None
     self.password = None
     self.authenticator = auth_user.Authenticator()
     self.heralding_connector = connect_server.SSHConnector(host="heralding")
+    self.client_addr = client_addr
 
   def check_auth_password(self, username, password):
     self.username = username
@@ -60,8 +61,7 @@ def start_proxy():
       transport = paramiko.Transport(client)
       host_key = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
       transport.add_server_key(host_key)
-      server = SSHProxyServer()
-      server.client_addr = addr
+      server = SSHProxyServer(addr)
 
       try:
         transport.start_server(server=server)
@@ -79,6 +79,8 @@ def start_proxy():
         chan = transport.accept(20)
         if chan is None:
           print("No channel")
+          transport.close()
+          client.close()
           continue
 
         username = server.username
