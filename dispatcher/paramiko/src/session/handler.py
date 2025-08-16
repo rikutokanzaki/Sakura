@@ -50,9 +50,9 @@ def handle_session(chan, username, password, addr, start_time):
         try:
           res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
           if res.status_code == 200:
-            print("Cowrie unpaused. Transferring session...")
+            print("Cowrie started. Transferring session...")
           else:
-            print(f"Failed to unpause Cowrie (HTTP {res.status_code})")
+            print(f"Failed to start Cowrie (HTTP {res.status_code})")
             break
         except Exception as e:
           print(f"Error triggering Cowrie: {e}")

@@ -17,7 +17,7 @@ class ServiceSession:
     self._last_trigger_time = time.time()
     self._session_active = threading.Event()
     self._stop_observer = threading.Event()
-    self.pause_lock = threading.Lock()
+    self.stop_lock = threading.Lock()
     self._observer_thread = threading.Thread(target=self.session_observer, daemon=True)
     self._observer_thread.start()
 
@@ -44,13 +44,13 @@ class ServiceSession:
       if self._session_active.wait(timeout):
         continue
 
-      with self.pause_lock:
+      with self.stop_lock:
         running_services = [s for s in self.service_names if docker_manager.is_service_running(s)]
         if running_services:
-          print(f"[INFO] Pausing {running_services} due to session timeout.")
-          docker_manager.pause_services(running_services)
+          print(f"[INFO] Stopping {running_services} due to session timeout.")
+          docker_manager.stop_services(running_services)
         else:
-          print(f"[INFO] Services already paused: {self.service_names}")
+          print(f"[INFO] Services already stopped: {self.service_names}")
 
       print(f"[INFO] Waiting for new session to reactive for {self.service_names}...")
       self._session_active.wait()

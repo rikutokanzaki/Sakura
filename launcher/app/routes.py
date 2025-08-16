@@ -132,9 +132,9 @@ def get_cowrie_logs():
 def trigger_h0neytr4p():
   session_manager.update_session("h0neytr4p")
 
-  with session_manager._services["h0neytr4p"].pause_lock:
+  with session_manager._services["h0neytr4p"].stop_lock:
     if not docker_manager.is_service_running("h0neytr4p"):
-      docker_manager.unpause_services(["h0neytr4p"])
+      docker_manager.start_services(["h0neytr4p"])
     session_manager.update_session("h0neytr4p")
 
   return "SSH Honeypot Triggered", 200
@@ -143,9 +143,9 @@ def trigger_h0neytr4p():
 def trigger_snare():
   session_manager.update_session("snare")
 
-  with session_manager._services["snare"].pause_lock:
+  with session_manager._services["snare"].stop_lock:
     if not docker_manager.is_service_running("snare"):
-      docker_manager.unpause_services(["snare","tanner_redis", "tanner_phpox", "tanner_api", "tanner"])
+      docker_manager.start_services(["snare","tanner_redis", "tanner_phpox", "tanner_api", "tanner"])
     session_manager.update_session("snare")
 
   return "HTTP Honeypot Triggered", 200
@@ -154,9 +154,9 @@ def trigger_snare():
 def trigger_cowrie():
   session_manager.update_session("cowrie")
 
-  with session_manager._services["cowrie"].pause_lock:
+  with session_manager._services["cowrie"].stop_lock:
     if not docker_manager.is_service_running("cowrie"):
-      docker_manager.unpause_services(["cowrie"])
+      docker_manager.start_services(["cowrie"])
     session_manager.update_session("cowrie")
 
   return "SSH Honeypot Triggered", 200
