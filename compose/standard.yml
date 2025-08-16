@@ -1,11 +1,10 @@
 services:
-
   ####################################
   ### Dispatcher
   ####################################
   openresty:
     container_name: openresty
-    build: ./dispatcher/openresty
+    build: ../dispatcher/openresty
     depends_on:
       - launcher
       - heralding
@@ -14,14 +13,14 @@ services:
       - "80:80"
       - "5000:5000"
     env_file:
-      - .env
+      - ../.env
     volumes:
       - ${SAKURA_DATA_PATH}/openresty:/var/log/nginx
     restart: always
 
   paramiko:
     container_name: paramiko
-    build: ./dispatcher/paramiko
+    build: ../dispatcher/paramiko
     depends_on:
       - launcher
       - heralding
@@ -29,25 +28,23 @@ services:
     ports:
       - "22:22"
     env_file:
-      - .env
+      - ../.env
     volumes:
       - ${SAKURA_DATA_PATH}/paramiko:/var/log/paramiko
     restart: always
-
 
   ####################################
   ### Launcher
   ####################################
   launcher:
     container_name: launcher
-    build: ./launcher
+    build: ../launcher
     env_file:
-      - .env
+      - ../.env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${SAKURA_DATA_PATH}:/data
     restart: always
-
 
   ####################################
   ### Layers
@@ -86,13 +83,12 @@ services:
     container_name: cowrie
     image: cowrie/cowrie
     volumes:
-      - ./layers/core/config/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt
+      - ../layers/core/config/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt
       - ${SAKURA_DATA_PATH}/cowrie:/cowrie/cowrie-git/var/log/cowrie
     environment:
       - PYTHONUNBUFFERED=1
       - COWRIE_TTYLOG_ENABLED=yes
     restart: always
-
 
   ####################################
   ### Elastic Stack
@@ -108,10 +104,10 @@ services:
     command: >
       bash -c '
         if [ x${ELASTIC_PASSWORD} == x ]; then
-          echo "Set the ELASTIC_PASSWORD environment variable in the .env file";
+          echo "Set the ELASTIC_PASSWORD environment variable in the ../.env file";
           exit 1;
         elif [ x${KIBANA_PASSWORD} == x ]; then
-          echo "Set the KIBANA_PASSWORD environment variable in the .env file";
+          echo "Set the KIBANA_PASSWORD environment variable in the ../.env file";
           exit 1;
         fi;
         if [ ! -f config/certs/ca.zip ]; then
@@ -150,7 +146,7 @@ services:
         echo "All done!";
       '
     healthcheck:
-      test: [ "CMD-SHELL", "[ -f config/certs/elasticsearch/elasticsearch.crt ]" ]
+      test: ["CMD-SHELL", "[ -f config/certs/elasticsearch/elasticsearch.crt ]"]
       interval: 1s
       timeout: 5s
       retries: 120
@@ -194,7 +190,11 @@ services:
         soft: -1
         hard: -1
     healthcheck:
-      test: [ "CMD-SHELL", "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'" ]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'",
+        ]
       interval: 10s
       timeout: 10s
       retries: 120
@@ -225,7 +225,11 @@ services:
       - elastic
     mem_limit: ${KB_MEM_LIMIT}
     healthcheck:
-      test: [ "CMD-SHELL", "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'" ]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'",
+        ]
       interval: 10s
       timeout: 10s
       retries: 120
@@ -241,7 +245,7 @@ services:
     user: root
     volumes:
       - certs:/usr/share/metricbeat/certs
-      - ./elk/metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - ../elk/metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
       - /proc:/hostfs/proc:ro
@@ -269,8 +273,8 @@ services:
     user: root
     volumes:
       - certs:/usr/share/logstash/certs
-      - ./elk/logstash/logstash_ingest_data/:/usr/share/logstash/ingest_data/
-      - ./elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ../elk/logstash/logstash_ingest_data/:/usr/share/logstash/ingest_data/
+      - ../elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
       - ${SAKURA_DATA_PATH}:/data
     ports:
       - "64305:9600"
