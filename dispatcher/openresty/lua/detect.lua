@@ -4,7 +4,7 @@ local uri = (ngx.var.request_uri or ""):lower()
 local ua  = (ngx.var.http_user_agent or ""):lower()
 
 local http_patterns = {
-  "union", "select", "or 1=1", "wp_login%.php",
+  "union", "select", "or 1=1", "php",
   "%.%.%/", "/etc/passwd", "cmd%.exe",
   "sqlmap", "curl", "python", "masscan", "nmap"
 }
