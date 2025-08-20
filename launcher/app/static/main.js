@@ -3,6 +3,8 @@ function getPreferredOrder(honeypotName) {
     return ['timestamp', 'src_ip', 'src_port', 'eventid', 'command', 'username', 'password'];
   } else if (honeypotName == 'heralding') {
     return ['timestamp', 'source_ip', 'source_port', 'request_uri'];
+  } else if (honeypotName == 'wordpot') {
+    return ['timestamp','src_ip', 'src_port', 'username', 'password', 'url', 'dest_ip', 'dest_port', 'message'];
   } else if (honeypotName === 'h0neytr4p') {
     return ['timestamp', 'header_x-real-ip', 'header_x-forwarded-for', 'src_ip', 'request_method', 'request_uri'];
   } else if (honeypotName === 'snare') {
@@ -75,6 +77,7 @@ function loadAndRenderLogs(honeypotName, tableId, selectId) {
 window.addEventListener('DOMContentLoaded', () => {
   loadAndRenderLogs('paramiko', 'paramikoTable', 'logCountSelectParamiko');
   loadAndRenderLogs('heralding', 'heraldingTable', 'logCountSelectHeralding');
+  loadAndRenderLogs('wordpot', 'wordpotTable', 'logCountSelectWordpot');
   loadAndRenderLogs('h0neytr4p', 'h0neytr4pTable', 'logCountSelectH0neytr4p');
   loadAndRenderLogs('snare', 'snareTable', 'logCountSelectSnare');
   loadAndRenderLogs('cowrie', 'cowrieTable', 'logCountSelectCowrie');

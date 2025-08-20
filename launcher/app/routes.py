@@ -89,6 +89,31 @@ def get_heralding_logs():
   except FileNotFoundError:
     return jsonify({'error': 'log.json not found'}), 404
 
+@bp.route('/api/logs/wordpot', methods=['GET'])
+def get_wordpot_logs():
+  file_path = '/data/wordpot/log/wordpot.log'
+
+  entries = []
+  try:
+    with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+      for raw in f:
+        line = raw.strip()
+        if not line:
+          continue
+
+        if line.startswith('{') and line.endswith('}'):
+          try:
+            obj = json.loads(line)
+            entries.append(flatten.flatten_dict(obj))
+            continue
+          except json.JSONDecodeError:
+            pass
+        entries.append({"message": line})
+
+    return jsonify(entries)
+  except FileNotFoundError:
+    return jsonify({'error': 'wordpot.log not found'}), 404
+
 @bp.route('/api/logs/h0neytr4p', methods=['GET'])
 def get_h0neytr4p_logs():
   file_path = os.path.join(os.path.dirname(__file__), '/data/h0neytr4p/log/log.json')
