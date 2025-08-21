@@ -101,14 +101,13 @@ def get_wordpot_logs():
         if not line:
           continue
 
-        if line.startswith('{') and line.endswith('}'):
-          try:
-            obj = json.loads(line)
-            entries.append(flatten.flatten_dict(obj))
-            continue
-          except json.JSONDecodeError:
-            pass
-        entries.append({"message": line})
+        try:
+          obj = json.loads(line)
+        except json.JSONDecodeError:
+          continue
+
+        if isinstance(obj, dict):
+          entries.append(flatten.flatten_dict(obj))
 
     return jsonify(entries)
   except FileNotFoundError:
