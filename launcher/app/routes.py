@@ -153,6 +153,17 @@ def get_cowrie_logs():
   except FileNotFoundError:
     return jsonify({'error': 'cowrie.json not found'}), 404
 
+@bp.route('/trigger/wordpot', methods=['POST'])
+def trigger_wordpot():
+  session_manager.update_session("wordpot")
+
+  with session_manager._services["wordpot"].stop_lock:
+    if not docker_manager.is_service_running("wordpot"):
+      docker_manager.start_services(["wordpot"])
+    session_manager.update_session("wordpot")
+
+  return "HTTP Honeypot Triggered", 200
+
 @bp.route('/trigger/h0neytr4p', methods=['POST'])
 def trigger_h0neytr4p():
   session_manager.update_session("h0neytr4p")
@@ -162,7 +173,7 @@ def trigger_h0neytr4p():
       docker_manager.start_services(["h0neytr4p"])
     session_manager.update_session("h0neytr4p")
 
-  return "SSH Honeypot Triggered", 200
+  return "HTTP Honeypot Triggered", 200
 
 @bp.route('/trigger/snare', methods=['POST'])
 def trigger_snare():
