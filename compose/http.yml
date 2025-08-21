@@ -55,6 +55,13 @@ services:
   ##############
 
   ### HTTP ###
+  wordpot:
+    container_name: wordpot
+    image: ghcr.io/telekom-security/wordpot:24.04.1
+    volumes:
+      - ${SAKURA_DATA_PATH}/wordpot/log/:/opt/wordpot/logs/
+    restart: always
+
   h0neytr4p:
     container_name: h0neytr4p
     image: ghcr.io/telekom-security/h0neytr4p:24.04.1
