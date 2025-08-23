@@ -9,6 +9,7 @@ services:
       - launcher
       - heralding
       - h0neytr4p
+      - wordpot
     ports:
       - "80:80"
       - "5000:5000"
@@ -60,6 +61,7 @@ services:
     image: ghcr.io/telekom-security/wordpot:24.04.1
     volumes:
       - ${SAKURA_DATA_PATH}/wordpot/log/:/opt/wordpot/logs/
+    user: "0"
     restart: always
 
   h0neytr4p:
