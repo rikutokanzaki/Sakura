@@ -1,4 +1,36 @@
-local httpc = require("resty.http").new()
+local http = require("resty.http")
+
+local upstreams = {
+  wordpot   = "wordpot:80",
+  h0neytr4p = "h0neytr4p:80",
+}
+
+local function split_hostport(hp)
+  local h, p = string.match(hp, "^([^:]+):(%d+)$")
+  return h or hp, tonumber(p) or 80
+end
+
+local function wait_upstream_ready(target, total_ms, interval_ms)
+  local hp = upstreams[target]
+  if not hp then return false end
+  local host, port = split_hostport(hp)
+
+  total_ms = total_ms or 4000
+  interval_ms = interval_ms or 100
+
+  local deadline = ngx.now() + (total_ms / 1000)
+  while ngx.now() < deadline do
+    local sock = ngx.socket.tcp()
+    sock:settimeout(interval_ms)
+    local ok = sock:connect(host, port)
+    if ok then
+      sock:close()
+      return true
+    end
+    ngx.sleep(interval_ms / 1000)
+  end
+  return false
+end
 
 local raw_uri = ngx.var.request_uri or ""
 local uri     = raw_uri:lower()
@@ -43,13 +75,20 @@ local function trigger_and_proxy(target)
   local launcher_port = "5000"
   local launcher_address = "http://launcher:" .. launcher_port .. "/trigger/" .. target
 
-  local res, err = httpc:request_uri(launcher_address, {
-    method = "POST"
-  })
+  local client = http.new()
+  client:set_timeout(1000)
+  local _, err = client:request_uri(launcher_address, { method = "POST" })
 
-  if not res then
+  if err then
     ngx.log(ngx.ERR, "failed to trigger: ", err)
   end
+
+  local ready = wait_upstream_ready(target, 4000, 100)
+  if not ready then
+    ngx.log(ngx.WARN, "upstream not ready for ", target, " -> fallback to heralding")
+    return ngx.exec("@heralding")
+  end
+
   return ngx.exec("@" .. target)
 end
 
