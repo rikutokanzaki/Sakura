@@ -1,19 +1,16 @@
 local http = require("resty.http")
 
 local upstreams = {
-  wordpot   = "wordpot:80",
-  h0neytr4p = "h0neytr4p:80",
+  wordpot   = { name = "wordpot",   port = 80 },
+  h0neytr4p = { name = "h0neytr4p", port = 80 },
 }
-
-local function split_hostport(hp)
-  local h, p = string.match(hp, "^([^:]+):(%d+)$")
-  return h or hp, tonumber(p) or 80
-end
 
 local function wait_upstream_ready(target, total_ms, interval_ms)
   local hp = upstreams[target]
   if not hp then return false end
-  local host, port = split_hostport(hp)
+
+  local host = hp.host or hp.name
+  local port = tonumber(hp.port)
 
   total_ms = total_ms or 4000
   interval_ms = interval_ms or 100
@@ -29,6 +26,7 @@ local function wait_upstream_ready(target, total_ms, interval_ms)
     end
     ngx.sleep(interval_ms / 1000)
   end
+
   return false
 end
 
