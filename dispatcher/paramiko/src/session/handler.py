@@ -34,10 +34,9 @@ def update_session(force=False):
     _LAST_UPDATE_AT = now
     threading.Thread(target=_post_update, daemon=True).start()
 
-def handle_session(chan, username, password, addr, start_time):
+def handle_session(chan, username, password, addr, start_time, cowrie_launched=False):
   history = []
   dir_cmd = ""
-  cowrie_launched = False
 
   hostname = str(os.getenv('HOST_NAME'))[:9]
   cwd = "~"
@@ -53,6 +52,9 @@ def handle_session(chan, username, password, addr, start_time):
     sent_line = line.rstrip() + "\r\n"
     chan.send(sent_line.encode("utf-8"))
     time.sleep(0.005)
+
+  if cowrie_launched:
+    update_session(force=True)
 
   try:
     while True:
