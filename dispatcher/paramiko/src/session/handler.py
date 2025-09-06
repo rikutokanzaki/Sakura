@@ -6,6 +6,33 @@ from utils import ansi_sequences, log_event
 import os
 import time
 import requests
+import threading
+
+UPDATE_SESSION_URL = "http://launcher:5000/session/update/cowrie"
+_UPDATE_LOCK = threading.Lock()
+_LAST_UPDATE_AT = 0.0
+UPDATE_INTERVAL = 1.5
+
+def _post_update():
+  try:
+    requests.post(UPDATE_SESSION_URL, timeout=2)
+  except Exception as e:
+    print(f"Session update failed: {e}")
+
+def update_session(force=False):
+  global _LAST_UPDATE_AT
+  now = time.time()
+
+  if not force and (now - _LAST_UPDATE_AT) < UPDATE_INTERVAL:
+    return
+
+  with _UPDATE_LOCK:
+    now = time.time()
+
+    if not force and (now - _LAST_UPDATE_AT) < UPDATE_INTERVAL:
+      return
+    _LAST_UPDATE_AT = now
+    threading.Thread(target=_post_update, daemon=True).start()
 
 def handle_session(chan, username, password, addr, start_time):
   history = []
@@ -62,6 +89,7 @@ def handle_session(chan, username, password, addr, start_time):
         output, cwd = cowrie_connector.replay_history(chan, username, password, history)
         clean_output = ansi_sequences.strip_ansi_sequences(output)
         chan.send(clean_output.encode("utf-8"))
+        update_session(force=True)
         continue
 
       output, cwd = cowrie_connector.execute_command(cmd, username, password, dir_cmd)
@@ -73,6 +101,7 @@ def handle_session(chan, username, password, addr, start_time):
       reader.update_prompt(prompt)
       clean_output = ansi_sequences.strip_ansi_sequences(output)
       chan.send(clean_output.encode("utf-8"))
+      update_session()
 
   except Exception as e:
     print(f"Error handling session: {e}")

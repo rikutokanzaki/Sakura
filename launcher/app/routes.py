@@ -196,6 +196,11 @@ def trigger_cowrie():
 
   return "SSH Honeypot Triggered", 200
 
+@bp.route('/session/update/cowrie', methods=['POST'])
+def update_cowrie_session():
+  session_manager.update_session("cowrie")
+  return "Updated cowrie session", 200
+
 @bp.before_request
 def restrict_ip():
   try:
