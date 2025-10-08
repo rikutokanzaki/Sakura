@@ -9,10 +9,21 @@ class SSHConnector:
     self.port = port
 
   def record_login(self, username: str, password: str):
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
-    client.close()
+    try:
+      client = paramiko.SSHClient()
+      client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+      client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
+
+    except Exception as e:
+      print(f"Login recording error: {e}")
+
+    finally:
+      if client:
+        try:
+          client.close()
+
+        except:
+          pass
 
   def replay_history(self, chan, username: str, password: str, history: list[str]):
     try:
@@ -36,11 +47,35 @@ class SSHConnector:
 
       shell.close()
       client.close()
+
       return output, cwd
 
     except Exception as e:
       print(f"Error forwarding to {self.host}: {e}\r\n")
-      chan.close()
+
+      if chan:
+        try:
+          chan.close()
+
+        except:
+          pass
+
+      return "", "~"
+
+    finally:
+      if shell:
+        try:
+          shell.close()
+
+        except:
+          pass
+
+      if client:
+        try:
+          client.close()
+
+        except:
+          pass
 
   def replay_cwd_only(self, username: str, password: str, history: list[str]) -> str:
     try:
@@ -52,7 +87,6 @@ class SSHConnector:
       shell.settimeout(5)
 
       self._wait_for_prompt(shell)
-
       for cmd in history:
         if cmd.startswith("cd "):
           shell.send(cmd + "\n")
@@ -65,6 +99,21 @@ class SSHConnector:
 
     except Exception as e:
       return "~"
+
+    finally:
+      if shell:
+        try:
+          shell.close()
+
+        except:
+          pass
+
+      if client:
+        try:
+          client.close()
+
+        except:
+          pass
 
   def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
     try:
@@ -91,6 +140,21 @@ class SSHConnector:
 
     except Exception as e:
       return f"Error: {e}\r\n", "~"
+
+    finally:
+      if shell:
+        try:
+          shell.close()
+
+        except:
+          pass
+
+      if client:
+        try:
+          client.close()
+
+        except:
+          pass
 
   def execute_with_tab(self, cwd, command: str, username: str, password: str):
     try:
@@ -136,22 +200,37 @@ class SSHConnector:
 
       output_chars = output.decode("utf-8", errors="ignore")
 
-      shell.close()
-      client.close()
-
       return command, output_chars
 
     except Exception as e:
       return "", ""
 
+    finally:
+      if shell:
+        try:
+          shell.close()
+
+        except:
+          pass
+
+      if client:
+        try:
+          client.close()
+
+        except:
+          pass
+
   def _wait_for_prompt(self, shell):
     try:
       while True:
         data = shell.recv(1024)
+
         if not data:
           break
+
         if b"$ " in data or b"# " in data:
           break
+
     except Exception:
       pass
 
