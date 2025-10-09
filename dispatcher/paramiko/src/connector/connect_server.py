@@ -9,6 +9,8 @@ class SSHConnector:
     self.port = port
 
   def record_login(self, username: str, password: str):
+    client = None
+
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -26,6 +28,9 @@ class SSHConnector:
           pass
 
   def replay_history(self, chan, username: str, password: str, history: list[str]):
+    client = None
+    shell = None
+
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -44,9 +49,6 @@ class SSHConnector:
           shell.send(cmd + "\n")
           if i == len(history) - 1:
             output, cwd = self._receive_until_prompt(shell, cmd)
-
-      shell.close()
-      client.close()
 
       return output, cwd
 
@@ -78,6 +80,9 @@ class SSHConnector:
           pass
 
   def replay_cwd_only(self, username: str, password: str, history: list[str]) -> str:
+    client = None
+    shell = None
+
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -116,6 +121,9 @@ class SSHConnector:
           pass
 
   def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
+    client = None
+    shell = None
+
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -157,6 +165,9 @@ class SSHConnector:
           pass
 
   def execute_with_tab(self, cwd, command: str, username: str, password: str):
+    client = None
+    shell = None
+
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
