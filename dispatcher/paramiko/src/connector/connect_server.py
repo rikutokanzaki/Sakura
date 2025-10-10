@@ -97,9 +97,6 @@ class SSHConnector:
           shell.send(cmd + "\n")
           _, cwd = self._receive_until_prompt(shell, cmd)
 
-      shell.close()
-      client.close()
-
       return cwd
 
     except Exception as e:
@@ -140,9 +137,6 @@ class SSHConnector:
 
       shell.send(command + "\n")
       output, cwd = self._receive_until_prompt(shell, command)
-
-      shell.close()
-      client.close()
 
       return output, cwd
 
