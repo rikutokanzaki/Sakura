@@ -2,12 +2,15 @@ local http = require("resty.http")
 
 local function with_boot_lock(key, ttl, fn)
   local dict = ngx.shared.sakura_switch
+
   if dict and dict:add("bootlock:" .. key, true, ttl or 5) then
     local ok, err = pcall(fn)
+
     if not ok then ngx.log(ngx.ERR, "[bootlock] fn error: ", err) end
     dict:delete("bootlock:" .. key)
   else
     local ok, err = pcall(fn)
+
     if not ok then ngx.log(ngx.ERR, "[bootlock] fn error: ", err) end
   end
 end
@@ -89,6 +92,7 @@ local function trigger_and_proxy(target)
     local client = http.new()
     client:set_timeout(1500)
     local res, err = client:request_uri(launcher_address, { method = "POST" })
+
     if err then
       ngx.log(ngx.ERR, "[trigger] err: ", err)
     else
