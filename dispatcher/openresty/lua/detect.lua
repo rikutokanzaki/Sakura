@@ -1,5 +1,17 @@
 local http = require("resty.http")
 
+local function with_boot_lock(key, ttl, fn)
+  local dict = ngx.shared.sakura_switch
+  if dict and dict:add("bootlock:" .. key, true, ttl or 5) then
+    local ok, err = pcall(fn)
+    if not ok then ngx.log(ngx.ERR, "[bootlock] fn error: ", err) end
+    dict:delete("bootlock:" .. key)
+  else
+    local ok, err = pcall(fn)
+    if not ok then ngx.log(ngx.ERR, "[bootlock] fn error: ", err) end
+  end
+end
+
 local upstreams = {
   wordpot   = { name = "wordpot",   port = 80 },
   h0neytr4p = { name = "h0neytr4p", port = 80 },
