@@ -85,13 +85,16 @@ local function trigger_and_proxy(target)
   local launcher_port = "5000"
   local launcher_address = "http://launcher:" .. launcher_port .. "/trigger/" .. target
 
-  local client = http.new()
-  client:set_timeout(1000)
-  local _, err = client:request_uri(launcher_address, { method = "POST" })
-
-  if err then
-    ngx.log(ngx.ERR, "failed to trigger: ", err)
-  end
+  with_boot_lock("trg:" .. target, 5, function()
+    local client = http.new()
+    client:set_timeout(1500)
+    local res, err = client:request_uri(launcher_address, { method = "POST" })
+    if err then
+      ngx.log(ngx.ERR, "[trigger] err: ", err)
+    else
+      ngx.log(ngx.INFO, "[trigger] status=", res and res.status)
+    end
+  end)
 
   local ready = wait_upstream_ready(target, 4000, 100)
   if not ready then
