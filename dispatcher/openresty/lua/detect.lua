@@ -2,16 +2,26 @@ local http = require("resty.http")
 
 local function with_boot_lock(key, ttl, fn)
   local dict = ngx.shared.sakura_switch
+  local lock_key = "bootlock:" .. key
+  local lock_ttl = ttl or 5
 
-  if dict and dict:add("bootlock:" .. key, true, ttl or 5) then
-    local ok, err = pcall(fn)
+  if dict then
+    if dict:add(lock_key, true, lock_ttl) then
+      local ok, err = pcall(fn)
 
-    if not ok then ngx.log(ngx.ERR, "[bootlock] fn error: ", err) end
-    dict:delete("bootlock:" .. key)
-  else
-    local ok, err = pcall(fn)
+      if not ok then
+        ngx.log(ngx.ERR, "[bootlock] fn error: ", err)
+      end
+      return
+    else
+      ngx.log(ngx.NOTICE, "[bootlock] skip: ", lock_key)
+      return
+    end
+  end
 
-    if not ok then ngx.log(ngx.ERR, "[bootlock] fn error: ", err) end
+  local ok, err = pcall(fn)
+  if not ok then
+    ngx.log(ngx.ERR, "[bootlock] fn error: ", err)
   end
 end
 
