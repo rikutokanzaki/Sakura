@@ -12,14 +12,20 @@ linked_map = {
   }
 
 class ServiceSession:
-  def __init__(self, service_name, linked_services=None):
+  def __init__(self, service_name, linked_services=None, persist=False):
     self.service_names = [service_name] + (linked_services or [])
     self._last_trigger_time = time.time()
     self._session_active = threading.Event()
     self._stop_observer = threading.Event()
     self.stop_lock = threading.Lock()
+    self.persist = persist
     self._observer_thread = threading.Thread(target=self.session_observer, daemon=True)
     self._observer_thread.start()
+
+  def set_persist(self, value: bool):
+    self.persist = value
+    if value:
+      self._session_active.set()
 
   def update(self):
     self._last_trigger_time = time.time()
@@ -35,8 +41,12 @@ class ServiceSession:
   def session_observer(self):
     while not self._stop_observer.is_set():
       self._session_active.clear()
-      now = time.time()
 
+      if self.persist:
+        self._session_active.wait(timeout=3600)
+        continue
+
+      now = time.time()
       timeout = SESSION_TIMEOUT - (now - self._last_trigger_time)
       if timeout <= 0:
         timeout = 0.1
@@ -55,14 +65,19 @@ class ServiceSession:
       print(f"[INFO] Waiting for new session to reactive for {self.service_names}...")
       self._session_active.wait()
 
-def update_session(service_name: str):
+def ensure_session(service_name: str, persist: bool = False):
   with _services_lock:
     if service_name not in _services:
       linked = linked_map.get(service_name, [])
-      print(f"[INFO] Creating session tracker for service: {service_name} with linked: {linked}")
-      _services[service_name] = ServiceSession(service_name, linked_services=linked)
+      print(f"[INFO] Creating session tracker for service: {service_name} with linked: {linked}, persist={persist}")
+      _services[service_name] = ServiceSession(service_name, linked_services=linked, persist=persist)
+    return _services[service_name]
 
-    _services[service_name].update()
+def update_session(service_name: str, persist: bool = False):
+  session = ensure_session(service_name, persist=persist)
+  session.update()
+  if persist:
+    session.set_persist(True)
 
 def is_session_active(service_name: str):
   with _services_lock:

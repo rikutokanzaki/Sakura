@@ -152,6 +152,17 @@ def get_cowrie_logs():
   except FileNotFoundError:
     return jsonify({'error': 'cowrie.json not found'}), 404
 
+@bp.route('/trigger/heralding', methods=['POST'])
+def trigger_heralding():
+  session_manager.update_session("heralding")
+
+  with session_manager._services["heralding"].stop_lock:
+    if not docker_manager.is_service_running("heralding"):
+      docker_manager.start_services(["heralding"])
+    session_manager.update_session("heralding")
+
+  return "HTTP Honeypot Triggered", 200
+
 @bp.route('/trigger/wordpot', methods=['POST'])
 def trigger_wordpot():
   session_manager.update_session("wordpot")
@@ -200,6 +211,100 @@ def trigger_cowrie():
 def update_cowrie_session():
   session_manager.update_session("cowrie")
   return "Updated cowrie session", 200
+
+def _ensure_session(service_name: str, persist: bool = False):
+  session_manager.ensure_session(service_name, persist=persist)
+  return session_manager._services[service_name]
+
+@bp.route('/trigger-infty/heralding', methods=['POST'])
+def trigger_infty_heralding():
+  session_manager.update_session("heralding", persist=True)
+
+  with session_manager._services["heralding"].stop_lock:
+    if not docker_manager.is_service_running("heralding"):
+      docker_manager.start_services(["heralding"])
+  return "HTTP Honeypot Triggered", 200
+
+@bp.route('/trigger-infty/wordpot', methods=['POST'])
+def trigger_infty_wordpot():
+  session_manager.update_session("wordpot", persist=True)
+
+  with session_manager._services["wordpot"].stop_lock:
+    if not docker_manager.is_service_running("wordpot"):
+      docker_manager.start_services(["wordpot"])
+  return "HTTP Honeypot Triggered", 200
+
+@bp.route('/trigger-infty/h0neytr4p', methods=['POST'])
+def trigger_infty_h0neytr4p():
+  session_manager.update_session("h0neytr4p", persist=True)
+
+  with session_manager._services["h0neytr4p"].stop_lock:
+    if not docker_manager.is_service_running("h0neytr4p"):
+      docker_manager.start_services(["h0neytr4p"])
+  return "HTTP Honeypot Triggered", 200
+
+@bp.route('/trigger-infty/snare', methods=['POST'])
+def trigger_infty_snare():
+  session_manager.update_session("snare", persist=True)
+
+  with session_manager._services["snare"].stop_lock:
+    if not docker_manager.is_service_running("snare"):
+      docker_manager.start_services(["snare","tanner_redis", "tanner_phpox", "tanner_api", "tanner"])
+  return "HTTP Honeypot Triggered", 200
+
+@bp.route('/trigger-infty/cowrie', methods=['POST'])
+def trigger_infty_cowrie():
+  session_manager.update_session("cowrie", persist=True)
+
+  with session_manager._services["cowrie"].stop_lock:
+    if not docker_manager.is_service_running("cowrie"):
+      docker_manager.start_services(["cowrie"])
+  return "SSH Honeypot Triggered", 200
+
+@bp.route('/stop/heralding', methods=['POST'])
+def stop_heralding():
+  _ensure_session("heralding")
+
+  with session_manager._services["heralding"].stop_lock:
+    if docker_manager.is_service_running("heralding"):
+      docker_manager.stop_services(["heralding"])
+  return "HTTP Honeypot Triggered", 200
+
+@bp.route('/stop/wordpot', methods=['POST'])
+def stop_wordpot():
+  _ensure_session("wordpot")
+
+  with session_manager._services["wordpot"].stop_lock:
+    if docker_manager.is_service_running("wordpot"):
+      docker_manager.stop_services(["wordpot"])
+  return "HTTP Honeypot Triggered", 200
+
+@bp.route('/stop/h0neytr4p', methods=['POST'])
+def stop_h0neytr4p():
+  _ensure_session("h0neytr4p")
+
+  with session_manager._services["h0neytr4p"].stop_lock:
+    if docker_manager.is_service_running("h0neytr4p"):
+      docker_manager.stop_services(["h0neytr4p"])
+  return "HTTP Honeypot Triggered", 200
+
+@bp.route('/stop/snare', methods=['POST'])
+def stop_snare():
+  _ensure_session("snare")
+
+  with session_manager._services["snare"].stop_lock:
+    if docker_manager.is_service_running("snare"):
+      docker_manager.stop_services(["snare","tanner_redis", "tanner_phpox", "tanner_api", "tanner"])
+  return "HTTP Honeypot Triggered", 200
+
+@bp.route('/stop/cowrie', methods=['POST'])
+def stop_cowrie():
+  _ensure_session("cowrie")
+
+  with session_manager._services["cowrie"].stop_lock:
+    if docker_manager.is_service_running("cowrie"):
+      docker_manager.stop_services(["cowrie"])
+  return "SSH Honeypot Triggered", 200
 
 @bp.before_request
 def restrict_ip():
