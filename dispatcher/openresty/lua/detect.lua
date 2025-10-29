@@ -1,5 +1,30 @@
 local http = require("resty.http")
 
+local function with_boot_lock(key, ttl, fn)
+  local dict = ngx.shared.sakura_switch
+  local lock_key = "bootlock:" .. key
+  local lock_ttl = ttl or 5
+
+  if dict then
+    if dict:add(lock_key, true, lock_ttl) then
+      local ok, err = pcall(fn)
+
+      if not ok then
+        ngx.log(ngx.ERR, "[bootlock] fn error: ", err)
+      end
+      return
+    else
+      ngx.log(ngx.NOTICE, "[bootlock] skip: ", lock_key)
+      return
+    end
+  end
+
+  local ok, err = pcall(fn)
+  if not ok then
+    ngx.log(ngx.ERR, "[bootlock] fn error: ", err)
+  end
+end
+
 local upstreams = {
   wordpot   = { name = "wordpot",   port = 80 },
   h0neytr4p = { name = "h0neytr4p", port = 80 },
@@ -73,13 +98,17 @@ local function trigger_and_proxy(target)
   local launcher_port = "5000"
   local launcher_address = "http://launcher:" .. launcher_port .. "/trigger/" .. target
 
-  local client = http.new()
-  client:set_timeout(1000)
-  local _, err = client:request_uri(launcher_address, { method = "POST" })
+  with_boot_lock("trg:" .. target, 5, function()
+    local client = http.new()
+    client:set_timeout(1500)
+    local res, err = client:request_uri(launcher_address, { method = "POST" })
 
-  if err then
-    ngx.log(ngx.ERR, "failed to trigger: ", err)
-  end
+    if err then
+      ngx.log(ngx.ERR, "[trigger] err: ", err)
+    else
+      ngx.log(ngx.INFO, "[trigger] status=", res and res.status)
+    end
+  end)
 
   local ready = wait_upstream_ready(target, 4000, 100)
   if not ready then
