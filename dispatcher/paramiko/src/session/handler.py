@@ -119,3 +119,6 @@ def handle_session(chan, username, password, addr, start_time, cowrie_launched=F
     )
     reader.cleanup_terminal()
     chan.close()
+
+    if chan.transport:
+      chan.transport.close()

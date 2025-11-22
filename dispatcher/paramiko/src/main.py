@@ -40,6 +40,13 @@ class SSHProxyServer(paramiko.ServerInterface):
 
     return paramiko.AUTH_SUCCESSFUL if auth_success else paramiko.AUTH_FAILED
 
+  def close(self):
+    if self.heralding_connector:
+      try:
+        self.heralding_connector.close()
+      except:
+        pass
+
   def check_channel_request(self, kind, chanid):
     if kind == "session":
       return paramiko.OPEN_SUCCEEDED
@@ -84,6 +91,8 @@ def start_proxy():
         transport.start_server(server=server)
       except paramiko.SSHException:
         print("SSH negotiation failed")
+        server.close()
+
         try:
           transport.close()
         except:
@@ -98,6 +107,8 @@ def start_proxy():
 
       except EOFError:
         print("Client closed connection during handshake (EOF)")
+        server.close()
+
         try:
           transport.close()
         except:
@@ -112,6 +123,8 @@ def start_proxy():
 
       except Exception as e:
         print(f"Unexpected error during SSH handshake: {e}")
+        server.close()
+
         try:
           transport.close()
         except:
@@ -126,10 +139,13 @@ def start_proxy():
 
       try:
         chan = transport.accept(20)
+
         if chan is None:
           print("No channel")
+          server.close()
           transport.close()
           client.close()
+
           continue
 
         username = server.username
@@ -143,8 +159,11 @@ def start_proxy():
           daemon=True
         ).start()
 
+        server.close()
+
       except EOFError:
         print("Client closed connection after authentication (EOF)")
+        server.close()
 
         try:
           transport.close()
@@ -158,6 +177,7 @@ def start_proxy():
 
       except Exception as e:
         print(f"Error during session handling: {e}")
+        server.close()
 
         try:
           transport.close()
@@ -171,6 +191,11 @@ def start_proxy():
 
     except Exception as e:
       print(f"Error acceptiong connection: {e}")
+
+      try:
+        server.close()
+      except:
+        pass
 
       try:
         if transport:
