@@ -73,7 +73,7 @@ def get_paramiko_logs():
 
     return jsonify(flat_logs)
   except FileNotFoundError:
-    return jsonify({'error': 'log.json not found'}), 404
+    return jsonify({'error': 'paramiko.log not found'}), 404
 
 @bp.route('/api/logs/heralding', methods=['GET'])
 def get_heralding_logs():
