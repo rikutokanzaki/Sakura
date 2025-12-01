@@ -1,7 +1,10 @@
 from utils import ansi_sequences
+import logging
 import paramiko
 import re
 import time
+
+logger = logging.getLogger(__name__)
 
 class SSHConnector:
   def __init__(self, host: str, port: int = 22):
@@ -17,15 +20,14 @@ class SSHConnector:
       client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
 
     except Exception as e:
-      print(f"Login recording error: {e}")
+      logger.error("Login recording error: %s", e)
 
     finally:
       if client:
         try:
           client.close()
-
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close SSH client in record_login")
 
   def replay_history(self, chan, username: str, password: str, history: list[str]):
     client = None
@@ -56,14 +58,13 @@ class SSHConnector:
       return output, cwd
 
     except Exception as e:
-      print(f"Error forwarding to {self.host}: {e}\r\n")
+      logger.error("Error forwarding to %s: %s", self.host, e)
 
       if chan:
         try:
           chan.close()
-
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close channel in replay_history")
 
       return "", "~"
 
@@ -71,16 +72,14 @@ class SSHConnector:
       if shell:
         try:
           shell.close()
-
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close shell in replay_history")
 
       if client:
         try:
           client.close()
-
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close SSH client in replay_history")
 
   def replay_cwd_only(self, username: str, password: str, history: list[str]) -> str:
     client = None
@@ -102,23 +101,22 @@ class SSHConnector:
 
       return cwd
 
-    except Exception as e:
+    except Exception:
+      logger.exception("Error in replay_cwd_only")
       return "~"
 
     finally:
       if shell:
         try:
           shell.close()
-
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close shell in replay_cwd_only")
 
       if client:
         try:
           client.close()
-
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close SSH client in replay_cwd_only")
 
   def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
     client = None
@@ -144,22 +142,21 @@ class SSHConnector:
       return output, cwd
 
     except Exception as e:
+      logger.error("Error in execute_command: %s", e)
       return f"Error: {e}\r\n", "~"
 
     finally:
       if shell:
         try:
           shell.close()
-
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close shell in execute_command")
 
       if client:
         try:
           client.close()
-
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close SSH client in execute_command")
 
   def execute_with_tab(self, cwd, command: str, username: str, password: str):
     client = None
@@ -204,29 +201,29 @@ class SSHConnector:
           time.sleep(0.05)
 
         except Exception:
+          logger.exception("Error while receiving TAB completion output")
           break
 
       output_chars = output.decode("utf-8", errors="ignore")
 
       return command, output_chars
 
-    except Exception as e:
+    except Exception:
+      logger.exception("Error in execute_with_tab")
       return "", ""
 
     finally:
       if shell:
         try:
           shell.close()
-
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close shell in execute_with_tab")
 
       if client:
         try:
           client.close()
-
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close SSH client in execute_with_tab")
 
   def _wait_for_prompt(self, shell):
     try:
@@ -240,7 +237,7 @@ class SSHConnector:
           break
 
     except Exception:
-      pass
+      logger.exception("Error in _wait_for_prompt")
 
   def _receive_until_prompt(self, shell, sent_cmd: str = "") -> tuple[str, str]:
     output = b""
@@ -256,7 +253,7 @@ class SSHConnector:
           prompt_line = data
           break
     except Exception:
-      pass
+      logger.exception("Error in _receive_until_prompt")
 
     lines = output.split(b"\n")
     cleaned_lines = []

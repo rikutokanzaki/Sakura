@@ -1,5 +1,8 @@
+import logging
 import requests
 import paramiko
+
+logger = logging.getLogger(__name__)
 
 class PromptManager:
   def __init__(self, launcher_host="launcher", cowrie_host="cowrie", cowrie_port=2222):
@@ -14,7 +17,7 @@ class PromptManager:
     try:
       res = requests.post(f"http://{self.launcher_host}:5000/trigger/cowrie", timeout=5)
       if res.status_code != 200:
-        print(f"Failed to trigger Cowrie: HTTP {res.status_code}")
+        logger.error("Failed to trigger Cowrie: HTTP %s", res.status_code)
         return "~$ "
 
       client = paramiko.SSHClient()
@@ -45,6 +48,6 @@ class PromptManager:
 
       return "~$ "
 
-    except Exception as e:
-      print(f"Error getting Cowrie prompt: {e}")
+    except Exception:
+      logger.exception("Error getting Cowrie prompt")
       return "~$ "
