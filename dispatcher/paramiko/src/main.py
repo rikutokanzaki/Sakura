@@ -1,3 +1,4 @@
+import logging
 from auth import auth_user
 from connector import connect_server
 from session import handler
@@ -7,6 +8,13 @@ import threading
 import paramiko
 import time
 import requests
+
+logging.basicConfig(
+  level=logging.INFO,
+  format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)
 
 HOST = "0.0.0.0"
 PORT = 22
@@ -29,8 +37,8 @@ class SSHProxyServer(paramiko.ServerInterface):
 
     try:
       self.heralding_connector.record_login(username=username, password=password)
-    except Exception as e:
-      pass
+    except Exception:
+      logger.exception("Failed to record login via heralding_connector")
 
     auth_success = self.authenticator.authenticate(username, password)
     log_event.log_auth_event(self.client_addr, HOST, PORT, username, password, auth_success)
@@ -44,8 +52,8 @@ class SSHProxyServer(paramiko.ServerInterface):
     if self.heralding_connector:
       try:
         self.heralding_connector.close()
-      except:
-        pass
+      except Exception:
+        logger.exception("Failed to close heralding_connector")
 
   def check_channel_request(self, kind, chanid):
     if kind == "session":
@@ -65,23 +73,27 @@ class SSHProxyServer(paramiko.ServerInterface):
     try:
       res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
       if res.status_code == 200:
-        print("Cowrie started in auth stage")
+        logger.info("Cowrie started in auth stage")
         self.cowrie_launched = True
       else:
-        print(f"Failed to start cowrie at auth (HTTP {res.status_code})")
-    except Exception as e:
-      print(f"Error triggering cowrie at auth: {e}")
+        logger.error("Failed to start cowrie at auth (HTTP %s)", res.status_code)
+    except Exception:
+      logger.exception("Error triggering cowrie at auth")
 
 def start_proxy():
   sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   sock.bind((HOST, PORT))
   sock.listen(100)
-  print(f"SSH Proxy listening on {HOST}:{PORT}")
+  logger.info("SSH Proxy listening on %s:%s", HOST, PORT)
 
   while True:
+    client = None
+    transport = None
+    server = None
+
     try:
       client, addr = sock.accept()
-      print(f"Connection from {addr}")
+      logger.info("Connection from %s", addr)
 
       transport = paramiko.Transport(client)
       transport.add_server_key(HOST_KEY)
@@ -90,50 +102,50 @@ def start_proxy():
       try:
         transport.start_server(server=server)
       except paramiko.SSHException:
-        print("SSH negotiation failed")
+        logger.warning("SSH negotiation failed")
         server.close()
 
         try:
           transport.close()
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close transport after SSHException")
 
         try:
           client.close()
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close client after SSHException")
 
         continue
 
       except EOFError:
-        print("Client closed connection during handshake (EOF)")
+        logger.info("Client closed connection during handshake (EOF)")
         server.close()
 
         try:
           transport.close()
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close transport after EOFError")
 
         try:
           client.close()
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close client after EOFError")
 
         continue
 
-      except Exception as e:
-        print(f"Unexpected error during SSH handshake: {e}")
+      except Exception:
+        logger.exception("Unexpected error during SSH handshake")
         server.close()
 
         try:
           transport.close()
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close transport after unexpected error")
 
         try:
           client.close()
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close client after unexpected error")
 
         continue
 
@@ -141,7 +153,7 @@ def start_proxy():
         chan = transport.accept(20)
 
         if chan is None:
-          print("No channel")
+          logger.warning("No channel")
           server.close()
           transport.close()
           client.close()
@@ -162,51 +174,53 @@ def start_proxy():
         server.close()
 
       except EOFError:
-        print("Client closed connection after authentication (EOF)")
+        logger.info("Client closed connection after authentication (EOF)")
         server.close()
 
         try:
           transport.close()
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close transport after post-auth EOFError")
 
         try:
           client.close()
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close client after post-auth EOFError")
 
-      except Exception as e:
-        print(f"Error during session handling: {e}")
+      except Exception:
+        logger.exception("Error during session handling")
         server.close()
 
         try:
           transport.close()
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close transport after session error")
 
         try:
           client.close()
-        except:
-          pass
+        except Exception:
+          logger.exception("Failed to close client after session error")
 
-    except Exception as e:
-      print(f"Error acceptiong connection: {e}")
+    except Exception:
+      logger.exception("Error accepting connection")
 
       try:
-        server.close()
-      except:
-        pass
+        if server:
+          server.close()
+      except Exception:
+        logger.exception("Failed to close server after accept error")
 
       try:
         if transport:
           transport.close()
-      except:
-        pass
+      except Exception:
+        logger.exception("Failed to close transport after accept error")
 
       try:
-        client.close()
-      except:
-        pass
+        if client:
+          client.close()
+      except Exception:
+        logger.exception("Failed to close client after accept error")
 
 if __name__ == "__main__":
   start_proxy()

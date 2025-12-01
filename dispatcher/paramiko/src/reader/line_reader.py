@@ -1,5 +1,8 @@
+import logging
 from connector import connect_server
 from utils import ansi_sequences, extract_chars
+
+logger = logging.getLogger(__name__)
 
 class LineReader:
   def __init__(self, chan, username, password, prompt="", history=[]):
@@ -46,7 +49,7 @@ class LineReader:
       self.redraw_buffer()
       self.prev_rendered_len = len(self.buffer)
     else:
-      print("Invalid history index")
+      logger.debug("Invalid history index in LineReader.set_buffer_from_history")
 
   def handle_tab_completion(self):
     full_input = b"".join(self.buffer).decode("utf-8", errors="ignore")
@@ -93,7 +96,7 @@ class LineReader:
     try:
       seq = self.chan.recv(2)
     except Exception as e:
-      print(f"Failed to read escape sequence: {e}")
+      logger.exception("Failed to read escape sequence")
       return
 
     # UP
@@ -137,7 +140,7 @@ class LineReader:
             self.chan.send(remainder)
             self.chan.send(f"\x1b[{len(remainder)}D".encode())
       except Exception as e:
-        print(f"Failed to read escape sequence: {e}")
+        logger.exception("Failed to read DELETE escape sequence")
         return
 
   def read(self):
@@ -196,6 +199,7 @@ class LineReader:
           self.chan.send(f"\x1b[{len(remainder) - 1}D".encode())
 
       except Exception:
+        logger.exception("Error while reading from channel")
         break
 
     return ""
