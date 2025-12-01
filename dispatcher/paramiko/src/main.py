@@ -10,7 +10,7 @@ import time
 import requests
 
 logging.basicConfig(
-  level=logging.INFO,
+  level=logging.WARN,
   format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
 )
 
