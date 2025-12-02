@@ -1,8 +1,7 @@
 from session import set_prompt
 from reader import line_reader
-from utils import set_motd
+from utils import set_motd, ansi_sequences, log_event, resource_manager
 from connector import connect_server
-from utils import ansi_sequences, log_event
 import logging
 import os
 import time
@@ -130,18 +129,16 @@ def handle_session(chan, username, password, addr, start_time, cowrie_launched=F
       duration=duration,
       message="Session closed"
     )
+
     try:
       reader.cleanup_terminal()
     except Exception:
       logger.exception("Failed to cleanup terminal")
 
-    try:
-      chan.close()
-    except Exception:
-      logger.exception("Failed to close channel")
+    resource_manager.close_channel(chan)
 
     try:
       if chan.transport:
-        chan.transport.close()
+        resource_manager.close_transport(chan.transport)
     except Exception:
-      logger.exception("Failed to close transport")
+      logger.exception("Failed to close transport from channel")

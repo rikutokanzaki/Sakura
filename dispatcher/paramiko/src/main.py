@@ -1,8 +1,8 @@
-import logging
 from auth import auth_user
 from connector import connect_server
 from session import handler
-from utils import log_event
+from utils import log_event, resource_manager
+import logging
 import socket
 import threading
 import paramiko
@@ -31,7 +31,7 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.client_addr = client_addr
     self.cowrie_launched = False
 
-  def check_auth_password(self, username, password):
+  def check_auth_password(self, username: str, password: str) -> int:
     self.username = username
     self.password = password
 
@@ -48,25 +48,18 @@ class SSHProxyServer(paramiko.ServerInterface):
 
     return paramiko.AUTH_SUCCESSFUL if auth_success else paramiko.AUTH_FAILED
 
-  def close(self):
-    if self.heralding_connector:
-      try:
-        self.heralding_connector.close()
-      except Exception:
-        logger.exception("Failed to close heralding_connector")
-
-  def check_channel_request(self, kind, chanid):
+  def check_channel_request(self, kind: str, chanid: int) -> int:
     if kind == "session":
       return paramiko.OPEN_SUCCEEDED
     return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
-  def check_channel_pty_request(self, channel, term, width, height, pixelwidth, pixelheight, modes):
+  def check_channel_pty_request(self, channel, term, width, height, pixelwidth, pixelheight, modes) -> bool:
     return True
 
-  def check_channel_shell_request(self, channel):
+  def check_channel_shell_request(self, channel) -> bool:
     return True
 
-  def check_channel_exec_request(self, channel, command):
+  def check_channel_exec_request(self, channel, command) -> bool:
     return True
 
   def _trigger_cowrie(self):
@@ -90,6 +83,7 @@ def start_proxy():
     client = None
     transport = None
     server = None
+    session_started = False
 
     try:
       client, addr = sock.accept()
@@ -101,126 +95,46 @@ def start_proxy():
 
       try:
         transport.start_server(server=server)
+
       except paramiko.SSHException:
         logger.warning("SSH negotiation failed")
-        server.close()
-
-        try:
-          transport.close()
-        except Exception:
-          logger.exception("Failed to close transport after SSHException")
-
-        try:
-          client.close()
-        except Exception:
-          logger.exception("Failed to close client after SSHException")
-
         continue
 
       except EOFError:
         logger.info("Client closed connection during handshake (EOF)")
-        server.close()
-
-        try:
-          transport.close()
-        except Exception:
-          logger.exception("Failed to close transport after EOFError")
-
-        try:
-          client.close()
-        except Exception:
-          logger.exception("Failed to close client after EOFError")
-
         continue
 
       except Exception:
         logger.exception("Unexpected error during SSH handshake")
-        server.close()
-
-        try:
-          transport.close()
-        except Exception:
-          logger.exception("Failed to close transport after unexpected error")
-
-        try:
-          client.close()
-        except Exception:
-          logger.exception("Failed to close client after unexpected error")
-
         continue
 
-      try:
-        chan = transport.accept(20)
+      chan = transport.accept(20)
 
-        if chan is None:
-          logger.warning("No channel")
-          server.close()
-          transport.close()
-          client.close()
+      if chan is None:
+        logger.warning("No channel")
+        continue
 
-          continue
+      username = server.username
+      password = server.password
+      start_time = time.time()
 
-        username = server.username
-        password = server.password
+      threading.Thread(
+        target=handler.handle_session,
+        args=(chan, username, password, addr, start_time, server.cowrie_launched),
+        daemon=True
+      ).start()
 
-        start_time = time.time()
+      session_started = True
 
-        threading.Thread(
-          target=handler.handle_session,
-          args=(chan, username, password, addr, start_time, server.cowrie_launched),
-          daemon=True
-        ).start()
-
-        server.close()
-
-      except EOFError:
-        logger.info("Client closed connection after authentication (EOF)")
-        server.close()
-
-        try:
-          transport.close()
-        except Exception:
-          logger.exception("Failed to close transport after post-auth EOFError")
-
-        try:
-          client.close()
-        except Exception:
-          logger.exception("Failed to close client after post-auth EOFError")
-
-      except Exception:
-        logger.exception("Error during session handling")
-        server.close()
-
-        try:
-          transport.close()
-        except Exception:
-          logger.exception("Failed to close transport after session error")
-
-        try:
-          client.close()
-        except Exception:
-          logger.exception("Failed to close client after session error")
+    except EOFError:
+      logger.info("Client closed connection after authentication (EOF)")
 
     except Exception:
       logger.exception("Error accepting connection")
 
-      try:
-        if server:
-          server.close()
-      except Exception:
-        logger.exception("Failed to close server after accept error")
-
-      try:
-        if transport:
-          transport.close()
-      except Exception:
-        logger.exception("Failed to close transport after accept error")
-
-      try:
-        if client:
-          client.close()
-      except Exception:
-        logger.exception("Failed to close client after accept error")
+    finally:
+      if not session_started:
+        resource_manager.close_proxy_connection(transport=transport, client=client)
 
 if __name__ == "__main__":
   start_proxy()

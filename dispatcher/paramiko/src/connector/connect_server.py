@@ -1,4 +1,4 @@
-from utils import ansi_sequences
+from utils import ansi_sequences, resource_manager
 import logging
 import paramiko
 import re
@@ -23,11 +23,7 @@ class SSHConnector:
       logger.error("Login recording error: %s", e)
 
     finally:
-      if client:
-        try:
-          client.close()
-        except Exception:
-          logger.exception("Failed to close SSH client in record_login")
+      resource_manager.close_client(client)
 
   def replay_history(self, chan, username: str, password: str, history: list[str]):
     client = None
@@ -52,34 +48,15 @@ class SSHConnector:
           if i == len(history) - 1:
             output, cwd = self._receive_until_prompt(shell, cmd)
 
-      shell.close()
-      client.close()
-
       return output, cwd
 
     except Exception as e:
       logger.error("Error forwarding to %s: %s", self.host, e)
-
-      if chan:
-        try:
-          chan.close()
-        except Exception:
-          logger.exception("Failed to close channel in replay_history")
-
+      resource_manager.close_channel(chan)
       return "", "~"
 
     finally:
-      if shell:
-        try:
-          shell.close()
-        except Exception:
-          logger.exception("Failed to close shell in replay_history")
-
-      if client:
-        try:
-          client.close()
-        except Exception:
-          logger.exception("Failed to close SSH client in replay_history")
+      resource_manager.close_ssh_connection(client=client, shell=shell)
 
   def replay_cwd_only(self, username: str, password: str, history: list[str]) -> str:
     client = None
@@ -94,6 +71,8 @@ class SSHConnector:
       shell.settimeout(5)
 
       self._wait_for_prompt(shell)
+      cwd = "~"
+
       for cmd in history:
         if cmd.startswith("cd "):
           shell.send(cmd + "\n")
@@ -106,17 +85,7 @@ class SSHConnector:
       return "~"
 
     finally:
-      if shell:
-        try:
-          shell.close()
-        except Exception:
-          logger.exception("Failed to close shell in replay_cwd_only")
-
-      if client:
-        try:
-          client.close()
-        except Exception:
-          logger.exception("Failed to close SSH client in replay_cwd_only")
+      resource_manager.close_ssh_connection(client=client, shell=shell)
 
   def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
     client = None
@@ -146,17 +115,7 @@ class SSHConnector:
       return f"Error: {e}\r\n", "~"
 
     finally:
-      if shell:
-        try:
-          shell.close()
-        except Exception:
-          logger.exception("Failed to close shell in execute_command")
-
-      if client:
-        try:
-          client.close()
-        except Exception:
-          logger.exception("Failed to close SSH client in execute_command")
+      resource_manager.close_ssh_connection(client=client, shell=shell)
 
   def execute_with_tab(self, cwd, command: str, username: str, password: str):
     client = None
@@ -213,17 +172,7 @@ class SSHConnector:
       return "", ""
 
     finally:
-      if shell:
-        try:
-          shell.close()
-        except Exception:
-          logger.exception("Failed to close shell in execute_with_tab")
-
-      if client:
-        try:
-          client.close()
-        except Exception:
-          logger.exception("Failed to close SSH client in execute_with_tab")
+      resource_manager.close_ssh_connection(client=client, shell=shell)
 
   def _wait_for_prompt(self, shell):
     try:

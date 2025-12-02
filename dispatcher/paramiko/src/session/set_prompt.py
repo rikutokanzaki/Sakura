@@ -1,3 +1,4 @@
+from utils import resource_manager
 import logging
 import requests
 import paramiko
@@ -14,6 +15,9 @@ class PromptManager:
     return f"{username}@{hostname}:{cwd}$ "
 
   def get_cowrie_prompt(self, username, password) -> str:
+    client = None
+    shell = None
+
     try:
       res = requests.post(f"http://{self.launcher_host}:5000/trigger/cowrie", timeout=5)
       if res.status_code != 200:
@@ -39,8 +43,6 @@ class PromptManager:
         except Exception:
           break
 
-      client.close()
-
       lines = output.decode("utf-8", errors="ignore").splitlines()
       for line in reversed(lines):
         if line.strip().endswith("$") or line.strip().endswith("#"):
@@ -51,3 +53,6 @@ class PromptManager:
     except Exception:
       logger.exception("Error getting Cowrie prompt")
       return "~$ "
+
+    finally:
+      resource_manager.close_ssh_connection(client=client, shell=shell)
