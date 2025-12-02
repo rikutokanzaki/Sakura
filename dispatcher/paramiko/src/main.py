@@ -22,6 +22,9 @@ PORT = 22
 HOST_KEY = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
 
 class SSHProxyServer(paramiko.ServerInterface):
+  _heralding_connector = None
+  _heralding_lock = threading.Lock()
+
   def __init__(self, client_addr):
     self.event = threading.Event()
     self.username = None
@@ -30,11 +33,18 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.client_addr = client_addr
     self.cowrie_launched = False
 
+  @classmethod
+  def _get_heralding_connector(cls):
+    with cls._heralding_lock:
+      if cls._heralding_connector is None:
+        cls._heralding_connector = connect_server.SSHConnector(host="heralding")
+      return cls._heralding_connector
+
   def check_auth_password(self, username: str, password: str) -> int:
     self.username = username
     self.password = password
 
-    heralding_connector = connect_server.SSHConnector(host="heralding")
+    heralding_connector = self._get_heralding_connector()
 
     try:
       heralding_connector.record_login(username=username, password=password)
