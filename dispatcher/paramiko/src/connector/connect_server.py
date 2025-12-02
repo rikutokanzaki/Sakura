@@ -23,6 +23,7 @@ class SSHConnector:
 
     except Exception:
       logger.exception("Login recording error")
+      raise
 
     finally:
       resource_manager.close_ssh_connection(client=client, transport=transport)

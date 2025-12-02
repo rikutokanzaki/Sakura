@@ -14,7 +14,6 @@ linked_map = {
 
 logger = logging.getLogger(__name__)
 
-
 class ServiceSession:
   def __init__(self, service_name, linked_services=None, persist=False):
     self.service_names = [service_name] + (linked_services or [])
@@ -71,7 +70,6 @@ class ServiceSession:
 
       logger.info("Waiting for new session to reactive for %s...", self.service_names)
       self._session_active.wait()
-
 
 def ensure_session(service_name: str, persist: bool = False):
   with _services_lock:
