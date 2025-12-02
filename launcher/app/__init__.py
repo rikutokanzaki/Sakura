@@ -4,7 +4,7 @@ from app.routes import bp
 import logging
 
 logging.basicConfig(
-  level=logging.WARN,
+  level=logging.WARNING,
   format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
 )
 
