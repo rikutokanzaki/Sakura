@@ -1,6 +1,8 @@
-import time
+from app.controllers import docker_manager
 import docker
+import logging
 import socket
+import time
 
 MAX_WAIT_SECONDS = 10
 client = docker.from_env()
@@ -14,6 +16,9 @@ WAIT_CONFIG = {
   "snare":  {"host": "snare",  "port": 80,   "timeout": 30},
 }
 
+logger = logging.getLogger(__name__)
+
+
 def is_service_running(service_name):
   running_services = []
   for container in client.containers.list():
@@ -24,6 +29,7 @@ def is_service_running(service_name):
 
   return service_name in running_services
 
+
 def _wait_for_health(container, timeout_sec):
   try:
     start = time.time()
@@ -32,13 +38,13 @@ def _wait_for_health(container, timeout_sec):
       health = container.attrs.get("State", {}).get("Health", {}).get("Status")
       if health == "healthy":
         return True
-      # healthcheck が無い場合は False を返してポート待機に委譲
       if health is None:
         return False
       time.sleep(0.5)
   except Exception:
     return False
   return False
+
 
 def _wait_for_port(host, port, timeout_sec):
   start = time.time()
@@ -50,6 +56,7 @@ def _wait_for_port(host, port, timeout_sec):
       time.sleep(0.5)
   return False
 
+
 def _wait_service_ready(service_name):
   cfg = WAIT_CONFIG.get(service_name, {})
   host = cfg.get("host", service_name)
@@ -59,62 +66,79 @@ def _wait_service_ready(service_name):
   try:
     container = client.containers.get(service_name)
   except Exception as e:
-    print(f"[WARN] Container {service_name} not found: {e}")
+    logger.warning("Container %s not found: %s", service_name, e)
     return
 
   healthy = _wait_for_health(container, timeout)
   if healthy:
-    print(f"[INFO] {service_name} is healthy.")
+    logger.info("%s is healthy.", service_name)
     return
 
   if port:
-    print(f"[INFO] Waiting for {service_name} ({host}:{port}) to accept connections...")
+    logger.info(
+      "Waiting for %s (%s:%s) to accept connections...",
+      service_name,
+      host,
+      port,
+    )
     if _wait_for_port(host, port, timeout):
-      print(f"[INFO] {service_name} is accepting connections on {host}:{port}.")
+      logger.info(
+        "%s is accepting connections on %s:%s.",
+        service_name,
+        host,
+        port,
+      )
     else:
-      print(f"[WARN] Timeout waiting for {service_name} port {host}:{port}.")
+      logger.warning(
+        "Timeout waiting for %s port %s:%s.",
+        service_name,
+        host,
+        port,
+      )
+
 
 def stop_services(service_names):
   for name in service_names:
     if not is_service_running(name):
-      print(f"[INFO] {name} is already stopped.")
+      logger.info("%s is already stopped.", name)
       continue
 
-    print(f"[INFO] Stopping {name}...")
+    logger.info("Stopping %s...", name)
     container = client.containers.get(name)
     container.stop()
 
     start_time = time.time()
     while True:
       if not is_service_running(name):
-        print(f"[INFO] {name} is now stopped.")
+        logger.info("%s is now stopped.", name)
         break
 
       if time.time() - start_time > MAX_WAIT_SECONDS:
-        print(f"[WARN] Timeout while stopping {name}.")
+        logger.warning("Timeout while stopping %s.", name)
         break
 
       time.sleep(0.5)
 
+
 def start_services(service_names):
   for name in service_names:
     if is_service_running(name):
-      print(f"[INFO] {name} is already running.")
+      logger.info("%s is already running.", name)
       _wait_service_ready(name)
       continue
 
-    print(f"[INFO] Stopping {name}...")
+    logger.info("Starting %s...", name)
     container = client.containers.get(name)
     container.start()
 
     start_time = time.time()
     while True:
       if is_service_running(name):
-        print(f"[INFO] {name} is now running.")
+        logger.info("%s is now running.", name)
         break
 
       if time.time() - start_time > MAX_WAIT_SECONDS:
-        print(f"[WARN] Timeout while stopping {name}.")
+        logger.warning("Timeout while starting %s.", name)
         break
 
       time.sleep(0.5)

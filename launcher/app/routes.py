@@ -2,12 +2,15 @@ from dotenv import load_dotenv
 from flask import Blueprint, request, abort, render_template, jsonify, current_app
 from app.controllers import docker_manager, session_manager
 from app.utils import flatten
-import os
-import json
 import ipaddress
+import logging
+import os
 import socket
+import json
 
 bp = Blueprint('main', __name__)
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 allowed_networks = [n.strip() for n in os.getenv("ALLOWED_NETWORKS", "").split(",") if n.strip()]
@@ -19,9 +22,9 @@ try:
   ip = socket.gethostbyname(hostname)
   network = ipaddress.ip_network(f"{ip}/24", strict=False)
   resolved_allowed_networks.append(network)
-  print(f"[ALLOW] Launcher self-resolved network: {network}")
+  logger.info("Launcher self-resolved network: %s", network)
 except socket.gaierror as e:
-  print(f"[DENY] Could not resolve self IP: {e}")
+  logger.warning("Could not resolve self IP: %s", e)
 
 for addr in allowed_networks:
   addr = addr.strip()
@@ -30,7 +33,7 @@ for addr in allowed_networks:
   try:
     network = ipaddress.ip_network(addr, strict=False)
     resolved_allowed_networks.append(network)
-    print(f"[ALLOW] Parsed network: {network}")
+    logger.info("Parsed network: %s", network)
     continue
   except ValueError:
     pass
@@ -39,9 +42,9 @@ for addr in allowed_networks:
     ip = socket.gethostbyname(addr)
     network = ipaddress.ip_network(f"{ip}/32", strict=False)
     resolved_allowed_networks.append(network)
-    print(f"[ALLOW] Resolved {addr} to {network}")
-  except socket.gaierror as e:
-      print(f"[DENY] Invalid network or hostname {addr}")
+    logger.info("Resolved %s to %s", addr, network)
+  except socket.gaierror:
+    logger.warning("Invalid network or hostname %s", addr)
 
 @bp.route('/')
 def index():
@@ -73,7 +76,7 @@ def get_paramiko_logs():
 
     return jsonify(flat_logs)
   except FileNotFoundError:
-    return jsonify({'error': 'log.json not found'}), 404
+    return jsonify({'error': 'paramiko.log not found'}), 404
 
 @bp.route('/api/logs/heralding', methods=['GET'])
 def get_heralding_logs():

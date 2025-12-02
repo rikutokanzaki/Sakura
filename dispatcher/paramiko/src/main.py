@@ -1,12 +1,20 @@
 from auth import auth_user
 from connector import connect_server
 from session import handler
-from utils import log_event
+from utils import log_event, resource_manager
+import logging
 import socket
 import threading
 import paramiko
 import time
 import requests
+
+logging.basicConfig(
+  level=logging.WARNING,
+  format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)
 
 HOST = "0.0.0.0"
 PORT = 22
@@ -19,18 +27,19 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.username = None
     self.password = None
     self.authenticator = auth_user.Authenticator()
-    self.heralding_connector = connect_server.SSHConnector(host="heralding")
     self.client_addr = client_addr
     self.cowrie_launched = False
 
-  def check_auth_password(self, username, password):
+  def check_auth_password(self, username: str, password: str) -> int:
     self.username = username
     self.password = password
 
+    heralding_connector = connect_server.SSHConnector(host="heralding")
+
     try:
-      self.heralding_connector.record_login(username=username, password=password)
-    except Exception as e:
-      pass
+      heralding_connector.record_login(username=username, password=password)
+    except Exception:
+      logger.exception("Failed to record login via heralding_connector")
 
     auth_success = self.authenticator.authenticate(username, password)
     log_event.log_auth_event(self.client_addr, HOST, PORT, username, password, auth_success)
@@ -40,41 +49,45 @@ class SSHProxyServer(paramiko.ServerInterface):
 
     return paramiko.AUTH_SUCCESSFUL if auth_success else paramiko.AUTH_FAILED
 
-  def check_channel_request(self, kind, chanid):
+  def check_channel_request(self, kind: str, chanid: int) -> int:
     if kind == "session":
       return paramiko.OPEN_SUCCEEDED
     return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
-  def check_channel_pty_request(self, channel, term, width, height, pixelwidth, pixelheight, modes):
+  def check_channel_pty_request(self, channel, term, width, height, pixelwidth, pixelheight, modes) -> bool:
     return True
 
-  def check_channel_shell_request(self, channel):
+  def check_channel_shell_request(self, channel) -> bool:
     return True
 
-  def check_channel_exec_request(self, channel, command):
+  def check_channel_exec_request(self, channel, command) -> bool:
     return True
 
   def _trigger_cowrie(self):
     try:
       res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
       if res.status_code == 200:
-        print("Cowrie started in auth stage")
+        logger.info("Cowrie started in auth stage")
         self.cowrie_launched = True
       else:
-        print(f"Failed to start cowrie at auth (HTTP {res.status_code})")
-    except Exception as e:
-      print(f"Error triggering cowrie at auth: {e}")
+        logger.error("Failed to start cowrie at auth (HTTP %s)", res.status_code)
+    except Exception:
+      logger.exception("Error triggering cowrie at auth")
 
 def start_proxy():
   sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   sock.bind((HOST, PORT))
   sock.listen(100)
-  print(f"SSH Proxy listening on {HOST}:{PORT}")
+  logger.info("SSH Proxy listening on %s:%s", HOST, PORT)
 
   while True:
+    client = None
+    transport = None
+    session_started = False
+
     try:
       client, addr = sock.accept()
-      print(f"Connection from {addr}")
+      logger.info("Connection from %s", addr)
 
       transport = paramiko.Transport(client)
       transport.add_server_key(HOST_KEY)
@@ -82,106 +95,46 @@ def start_proxy():
 
       try:
         transport.start_server(server=server)
+
       except paramiko.SSHException:
-        print("SSH negotiation failed")
-        try:
-          transport.close()
-        except:
-          pass
-
-        try:
-          client.close()
-        except:
-          pass
-
+        logger.warning("SSH negotiation failed")
         continue
 
       except EOFError:
-        print("Client closed connection during handshake (EOF)")
-        try:
-          transport.close()
-        except:
-          pass
-
-        try:
-          client.close()
-        except:
-          pass
-
+        logger.info("Client closed connection during handshake (EOF)")
         continue
 
-      except Exception as e:
-        print(f"Unexpected error during SSH handshake: {e}")
-        try:
-          transport.close()
-        except:
-          pass
-
-        try:
-          client.close()
-        except:
-          pass
-
+      except Exception:
+        logger.exception("Unexpected error during SSH handshake")
         continue
 
-      try:
-        chan = transport.accept(20)
-        if chan is None:
-          print("No channel")
-          transport.close()
-          client.close()
-          continue
+      chan = transport.accept(20)
 
-        username = server.username
-        password = server.password
+      if chan is None:
+        logger.warning("No channel")
+        continue
 
-        start_time = time.time()
+      username = server.username
+      password = server.password
+      start_time = time.time()
 
-        threading.Thread(
-          target=handler.handle_session,
-          args=(chan, username, password, addr, start_time, server.cowrie_launched),
-          daemon=True
-        ).start()
+      threading.Thread(
+        target=handler.handle_session,
+        args=(chan, username, password, addr, start_time, server.cowrie_launched),
+        daemon=True
+      ).start()
 
-      except EOFError:
-        print("Client closed connection after authentication (EOF)")
+      session_started = True
 
-        try:
-          transport.close()
-        except:
-          pass
+    except EOFError:
+      logger.info("Client closed connection after authentication (EOF)")
 
-        try:
-          client.close()
-        except:
-          pass
+    except Exception:
+      logger.exception("Error accepting connection")
 
-      except Exception as e:
-        print(f"Error during session handling: {e}")
-
-        try:
-          transport.close()
-        except:
-          pass
-
-        try:
-          client.close()
-        except:
-          pass
-
-    except Exception as e:
-      print(f"Error acceptiong connection: {e}")
-
-      try:
-        if transport:
-          transport.close()
-      except:
-        pass
-
-      try:
-        client.close()
-      except:
-        pass
+    finally:
+      if not session_started:
+        resource_manager.close_proxy_connection(transport=transport, client=client)
 
 if __name__ == "__main__":
   start_proxy()

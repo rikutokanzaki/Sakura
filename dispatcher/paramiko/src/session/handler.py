@@ -1,12 +1,14 @@
 from session import set_prompt
 from reader import line_reader
-from utils import set_motd
+from utils import set_motd, ansi_sequences, log_event, resource_manager
 from connector import connect_server
-from utils import ansi_sequences, log_event
+import logging
 import os
 import time
 import requests
 import threading
+
+logger = logging.getLogger(__name__)
 
 UPDATE_SESSION_URL = "http://launcher:5000/session/update/cowrie"
 _UPDATE_LOCK = threading.Lock()
@@ -16,10 +18,10 @@ UPDATE_INTERVAL = 1.5
 def _post_update():
   try:
     requests.post(UPDATE_SESSION_URL, timeout=2)
-  except Exception as e:
-    print(f"Session update failed: {e}")
+  except Exception:
+    logger.exception("Session update failed")
 
-def update_session(force=False):
+def update_session(force: bool = False) -> None:
   global _LAST_UPDATE_AT
   now = time.time()
 
@@ -34,7 +36,12 @@ def update_session(force=False):
     _LAST_UPDATE_AT = now
     threading.Thread(target=_post_update, daemon=True).start()
 
-def handle_session(chan, username, password, addr, start_time, cowrie_launched=False):
+def _build_dir_cmd(cwd: str) -> str:
+  if not cwd or cwd == "~":
+    return ""
+  return f"cd {cwd}"
+
+def handle_session(chan, username: str, password: str, addr: tuple, start_time: float, cowrie_launched: bool = False) -> None:
   history = []
   dir_cmd = ""
 
@@ -65,7 +72,7 @@ def handle_session(chan, username, password, addr, start_time, cowrie_launched=F
 
       try:
         src_ip, src_port = chan.getpeername()
-      except:
+      except Exception:
         src_ip, src_port = "unknown", 0
 
       log_event.log_command_event(src_ip, src_port, username, cmd, cwd)
@@ -79,43 +86,75 @@ def handle_session(chan, username, password, addr, start_time, cowrie_launched=F
         try:
           res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
           if res.status_code == 200:
-            print("Cowrie started. Transferring session...")
+            logger.info("Cowrie started. Transferring session...")
           else:
-            print(f"Failed to start Cowrie (HTTP {res.status_code})")
+            logger.error("Failed to start Cowrie (HTTP %s)", res.status_code)
+            chan.send(b"Service unavailable. Session terminated.\r\n")
             break
-        except Exception as e:
-          print(f"Error triggering Cowrie: {e}")
+        except Exception:
+          logger.exception("Error triggering Cowrie")
+          chan.send(b"Service unavailable. Session terminated.\r\n")
           break
 
         cowrie_launched = True
-        output, cwd = cowrie_connector.replay_history(chan, username, password, history)
+
+        try:
+          output, cwd = cowrie_connector.replay_history(username, password, history)
+        except Exception:
+          logger.exception("Cowrie connection failed during replay_history")
+          chan.send(b"Connection to backend lost. Session terminated.\r\n")
+          break
+
+        dir_cmd = _build_dir_cmd(cwd)
+        prompt = prompt_manager.get_prompt(username, hostname, cwd)
+        reader.update_prompt(prompt)
+
         clean_output = ansi_sequences.strip_ansi_sequences(output)
         chan.send(clean_output.encode("utf-8"))
         update_session(force=True)
         continue
 
-      output, cwd = cowrie_connector.execute_command(cmd, username, password, dir_cmd)
-      if cwd != "~":
-        dir_cmd = f"cd {cwd}"
-      else:
-        dir_cmd = ""
+      dir_cmd = _build_dir_cmd(cwd)
+
+      try:
+        output, cwd = cowrie_connector.execute_command(cmd, username, password, dir_cmd)
+      except Exception:
+        logger.exception("Cowrie connection lost during command execution")
+        chan.send(b"Connection to backend lost. Session terminated.\r\n")
+        break
+
+      dir_cmd = _build_dir_cmd(cwd)
       prompt = prompt_manager.get_prompt(username, hostname, cwd)
       reader.update_prompt(prompt)
+
       clean_output = ansi_sequences.strip_ansi_sequences(output)
       chan.send(clean_output.encode("utf-8"))
       update_session()
 
-  except Exception as e:
-    print(f"Error handling session: {e}")
+  except EOFError:
+    logger.info("Client closed connection (EOF)")
+
+  except Exception:
+    logger.exception("Error handling session")
 
   finally:
+    try:
+      src_ip, src_port = addr[0], addr[1]
+    except Exception:
+      src_ip, src_port = "unknown", 0
+
     duration = time.time() - start_time
     log_event.log_session_close(
-      src_ip=addr[0],
-      src_port=addr[1],
+      src_ip=src_ip,
+      src_port=src_port,
       username=username,
       duration=duration,
       message="Session closed"
     )
-    reader.cleanup_terminal()
-    chan.close()
+
+    try:
+      reader.cleanup_terminal()
+    except Exception:
+      logger.exception("Failed to cleanup terminal")
+
+    resource_manager.close_channel(chan)

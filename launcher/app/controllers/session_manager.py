@@ -1,6 +1,7 @@
-import time
-import threading
 from app.controllers import docker_manager
+import logging
+import threading
+import time
 
 SESSION_TIMEOUT = 300
 
@@ -8,8 +9,10 @@ _services = {}
 _services_lock = threading.Lock()
 
 linked_map = {
-    "snare": ["tanner_redis", "tanner_phpox", "tanner_api", "tanner"]
-  }
+  "snare": ["tanner_redis", "tanner_phpox", "tanner_api", "tanner"]
+}
+
+logger = logging.getLogger(__name__)
 
 class ServiceSession:
   def __init__(self, service_name, linked_services=None, persist=False):
@@ -55,22 +58,34 @@ class ServiceSession:
         continue
 
       with self.stop_lock:
-        running_services = [s for s in self.service_names if docker_manager.is_service_running(s)]
+        running_services = [
+          s for s in self.service_names
+          if docker_manager.is_service_running(s)
+        ]
         if running_services:
-          print(f"[INFO] Stopping {running_services} due to session timeout.")
+          logger.info("Stopping %s due to session timeout.", running_services)
           docker_manager.stop_services(running_services)
         else:
-          print(f"[INFO] Services already stopped: {self.service_names}")
+          logger.info("Services already stopped: %s", self.service_names)
 
-      print(f"[INFO] Waiting for new session to reactive for {self.service_names}...")
+      logger.info("Waiting for new session to reactive for %s...", self.service_names)
       self._session_active.wait()
 
 def ensure_session(service_name: str, persist: bool = False):
   with _services_lock:
     if service_name not in _services:
       linked = linked_map.get(service_name, [])
-      print(f"[INFO] Creating session tracker for service: {service_name} with linked: {linked}, persist={persist}")
-      _services[service_name] = ServiceSession(service_name, linked_services=linked, persist=persist)
+      logger.info(
+        "Creating session tracker for service: %s with linked: %s, persist=%s",
+        service_name,
+        linked,
+        persist,
+      )
+      _services[service_name] = ServiceSession(
+        service_name,
+        linked_services=linked,
+        persist=persist,
+      )
     return _services[service_name]
 
 def update_session(service_name: str, persist: bool = False):
