@@ -13,31 +13,27 @@ class SSHConnector:
 
   def record_login(self, username: str, password: str):
     client = None
-    transport = None
 
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
-      transport = client.get_transport()
 
     except Exception:
       logger.exception("Login recording error")
       raise
 
     finally:
-      resource_manager.close_ssh_connection(client=client, transport=transport)
+      resource_manager.close_client(client)
 
   def replay_history(self, username: str, password: str, history: list[str]):
     client = None
     shell = None
-    transport = None
 
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
-      transport = client.get_transport()
 
       shell = client.invoke_shell()
       shell.settimeout(5)
@@ -60,18 +56,16 @@ class SSHConnector:
       raise
 
     finally:
-      resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
+      resource_manager.close_ssh_connection(client=client, shell=shell)
 
   def replay_cwd_only(self, username: str, password: str, history: list[str]) -> str:
     client = None
     shell = None
-    transport = None
 
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
-      transport = client.get_transport()
 
       shell = client.invoke_shell()
       shell.settimeout(5)
@@ -91,18 +85,16 @@ class SSHConnector:
       raise
 
     finally:
-      resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
+      resource_manager.close_ssh_connection(client=client, shell=shell)
 
   def execute_command(self, command: str, username: str, password: str, dir_cmd=None):
     client = None
     shell = None
-    transport = None
 
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
-      transport = client.get_transport()
 
       shell = client.invoke_shell()
       shell.settimeout(5)
@@ -123,18 +115,16 @@ class SSHConnector:
       raise
 
     finally:
-      resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
+      resource_manager.close_ssh_connection(client=client, shell=shell)
 
   def execute_with_tab(self, cwd, command: str, username: str, password: str):
     client = None
     shell = None
-    transport = None
 
     try:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
-      transport = client.get_transport()
 
       shell = client.invoke_shell()
       shell.settimeout(5)
@@ -182,7 +172,7 @@ class SSHConnector:
       return "", ""
 
     finally:
-      resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
+      resource_manager.close_ssh_connection(client=client, shell=shell)
 
   def _wait_for_prompt(self, shell):
     try:
