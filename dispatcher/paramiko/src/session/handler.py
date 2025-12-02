@@ -41,16 +41,6 @@ def _build_dir_cmd(cwd: str) -> str:
     return ""
   return f"cd {cwd}"
 
-def _is_cowrie_connection_error(output: str) -> bool:
-  error_patterns = [
-    "Name or service not known",
-    "Connection refused",
-    "No route to host",
-    "Connection reset by peer",
-    "Operation timed out"
-  ]
-  return any(pattern in output for pattern in error_patterns)
-
 def handle_session(chan, username: str, password: str, addr: tuple, start_time: float, cowrie_launched: bool = False) -> None:
   history = []
   dir_cmd = ""
@@ -107,10 +97,11 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
           break
 
         cowrie_launched = True
-        output, cwd = cowrie_connector.replay_history(chan, username, password, history)
 
-        if _is_cowrie_connection_error(output):
-          logger.error("Cowrie connection failed during replay_history")
+        try:
+          output, cwd = cowrie_connector.replay_history(chan, username, password, history)
+        except Exception:
+          logger.exception("Cowrie connection failed during replay_history")
           chan.send(b"Connection to backend lost. Session terminated.\r\n")
           break
 
@@ -124,10 +115,11 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
         continue
 
       dir_cmd = _build_dir_cmd(cwd)
-      output, cwd = cowrie_connector.execute_command(cmd, username, password, dir_cmd)
 
-      if _is_cowrie_connection_error(output):
-        logger.error("Cowrie connection lost during command execution")
+      try:
+        output, cwd = cowrie_connector.execute_command(cmd, username, password, dir_cmd)
+      except Exception:
+        logger.exception("Cowrie connection lost during command execution")
         chan.send(b"Connection to backend lost. Session terminated.\r\n")
         break
 

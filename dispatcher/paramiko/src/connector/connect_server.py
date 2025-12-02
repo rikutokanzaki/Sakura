@@ -19,8 +19,9 @@ class SSHConnector:
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
 
-    except Exception as e:
-      logger.error("Login recording error: %s", e)
+    except Exception:
+      logger.exception("Login recording error")
+      raise
 
     finally:
       resource_manager.close_client(client)
@@ -50,10 +51,9 @@ class SSHConnector:
 
       return output, cwd
 
-    except Exception as e:
-      logger.error("Error forwarding to %s: %s", self.host, e)
-      resource_manager.close_channel(chan)
-      return "", "~"
+    except Exception:
+      logger.exception("Error in replay_history to %s", self.host)
+      raise
 
     finally:
       resource_manager.close_ssh_connection(client=client, shell=shell)
@@ -82,7 +82,7 @@ class SSHConnector:
 
     except Exception:
       logger.exception("Error in replay_cwd_only")
-      return "~"
+      raise
 
     finally:
       resource_manager.close_ssh_connection(client=client, shell=shell)
@@ -110,9 +110,9 @@ class SSHConnector:
 
       return output, cwd
 
-    except Exception as e:
-      logger.error("Error in execute_command: %s", e)
-      return f"Error: {e}\r\n", "~"
+    except Exception:
+      logger.exception("Error in execute_command")
+      raise
 
     finally:
       resource_manager.close_ssh_connection(client=client, shell=shell)
@@ -187,6 +187,7 @@ class SSHConnector:
 
     except Exception:
       logger.exception("Error in _wait_for_prompt")
+      raise
 
   def _receive_until_prompt(self, shell, sent_cmd: str = "") -> tuple[str, str]:
     output = b""
@@ -203,6 +204,7 @@ class SSHConnector:
           break
     except Exception:
       logger.exception("Error in _receive_until_prompt")
+      raise
 
     lines = output.split(b"\n")
     cleaned_lines = []
