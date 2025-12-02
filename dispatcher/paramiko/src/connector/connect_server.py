@@ -236,7 +236,6 @@ class SSHConnector:
     output_lines = b"\n".join(cleaned_lines).decode("utf-8", errors="ignore")
 
     cwd = "~"
-    prompt_str = prompt_line.decode("utf-8", errors="ignore").strip()
     match = re.search(r"@[^:]+:(.*?)[\$#] ?", prompt_str)
     if match:
       cwd = match.group(1).strip()
