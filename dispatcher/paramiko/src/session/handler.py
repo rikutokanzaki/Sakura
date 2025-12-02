@@ -21,7 +21,7 @@ def _post_update():
   except Exception:
     logger.exception("Session update failed")
 
-def update_session(force=False):
+def update_session(force: bool = False) -> None:
   global _LAST_UPDATE_AT
   now = time.time()
 
@@ -41,7 +41,17 @@ def _build_dir_cmd(cwd: str) -> str:
     return ""
   return f"cd {cwd}"
 
-def handle_session(chan, username, password, addr, start_time, cowrie_launched=False):
+def _is_cowrie_connection_error(output: str) -> bool:
+  error_patterns = [
+    "Name or service not known",
+    "Connection refused",
+    "No route to host",
+    "Connection reset by peer",
+    "Operation timed out"
+  ]
+  return any(pattern in output for pattern in error_patterns)
+
+def handle_session(chan, username: str, password: str, addr: tuple, start_time: float, cowrie_launched: bool = False) -> None:
   history = []
   dir_cmd = ""
 
@@ -89,15 +99,22 @@ def handle_session(chan, username, password, addr, start_time, cowrie_launched=F
             logger.info("Cowrie started. Transferring session...")
           else:
             logger.error("Failed to start Cowrie (HTTP %s)", res.status_code)
+            chan.send(b"Service unavailable. Session terminated.\r\n")
             break
         except Exception:
           logger.exception("Error triggering Cowrie")
+          chan.send(b"Service unavailable. Session terminated.\r\n")
           break
 
         cowrie_launched = True
         output, cwd = cowrie_connector.replay_history(chan, username, password, history)
-        dir_cmd = _build_dir_cmd(cwd)
 
+        if _is_cowrie_connection_error(output):
+          logger.error("Cowrie connection failed during replay_history")
+          chan.send(b"Connection to backend lost. Session terminated.\r\n")
+          break
+
+        dir_cmd = _build_dir_cmd(cwd)
         prompt = prompt_manager.get_prompt(username, hostname, cwd)
         reader.update_prompt(prompt)
 
@@ -109,6 +126,11 @@ def handle_session(chan, username, password, addr, start_time, cowrie_launched=F
       dir_cmd = _build_dir_cmd(cwd)
       output, cwd = cowrie_connector.execute_command(cmd, username, password, dir_cmd)
 
+      if _is_cowrie_connection_error(output):
+        logger.error("Cowrie connection lost during command execution")
+        chan.send(b"Connection to backend lost. Session terminated.\r\n")
+        break
+
       dir_cmd = _build_dir_cmd(cwd)
       prompt = prompt_manager.get_prompt(username, hostname, cwd)
       reader.update_prompt(prompt)
@@ -116,6 +138,9 @@ def handle_session(chan, username, password, addr, start_time, cowrie_launched=F
       clean_output = ansi_sequences.strip_ansi_sequences(output)
       chan.send(clean_output.encode("utf-8"))
       update_session()
+
+  except EOFError:
+    logger.info("Client closed connection (EOF)")
 
   except Exception:
     logger.exception("Error handling session")
