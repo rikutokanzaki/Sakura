@@ -27,7 +27,6 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.username = None
     self.password = None
     self.authenticator = auth_user.Authenticator()
-    self.heralding_connector = connect_server.SSHConnector(host="heralding")
     self.client_addr = client_addr
     self.cowrie_launched = False
 
@@ -35,8 +34,10 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.username = username
     self.password = password
 
+    heralding_connector = connect_server.SSHConnector(host="heralding")
+
     try:
-      self.heralding_connector.record_login(username=username, password=password)
+      heralding_connector.record_login(username=username, password=password)
     except Exception:
       logger.exception("Failed to record login via heralding_connector")
 
@@ -82,7 +83,6 @@ def start_proxy():
   while True:
     client = None
     transport = None
-    server = None
     session_started = False
 
     try:

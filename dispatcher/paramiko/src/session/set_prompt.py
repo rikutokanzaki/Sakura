@@ -17,6 +17,7 @@ class PromptManager:
   def get_cowrie_prompt(self, username, password) -> str:
     client = None
     shell = None
+    transport = None
 
     try:
       res = requests.post(f"http://{self.launcher_host}:5000/trigger/cowrie", timeout=5)
@@ -27,6 +28,7 @@ class PromptManager:
       client = paramiko.SSHClient()
       client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       client.connect(self.cowrie_host, port=self.cowrie_port, username=username, password=password, timeout=10)
+      transport = client.get_transport()
 
       shell = client.invoke_shell()
       shell.settimeout(5)
@@ -55,4 +57,4 @@ class PromptManager:
       return "~$ "
 
     finally:
-      resource_manager.close_ssh_connection(client=client, shell=shell)
+      resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)

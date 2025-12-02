@@ -138,10 +138,15 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
     logger.exception("Error handling session")
 
   finally:
+    try:
+      src_ip, src_port = addr[0], addr[1]
+    except Exception:
+      src_ip, src_port = "unknown", 0
+
     duration = time.time() - start_time
     log_event.log_session_close(
-      src_ip=addr[0],
-      src_port=addr[1],
+      src_ip=src_ip,
+      src_port=src_port,
       username=username,
       duration=duration,
       message="Session closed"
@@ -153,9 +158,3 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
       logger.exception("Failed to cleanup terminal")
 
     resource_manager.close_channel(chan)
-
-    try:
-      if chan.transport:
-        resource_manager.close_transport(chan.transport)
-    except Exception:
-      logger.exception("Failed to close transport from channel")
