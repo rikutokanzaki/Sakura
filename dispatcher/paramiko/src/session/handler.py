@@ -99,7 +99,7 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
         cowrie_launched = True
 
         try:
-          output, cwd = cowrie_connector.replay_history(chan, username, password, history)
+          output, cwd = cowrie_connector.replay_history(username, password, history)
         except Exception:
           logger.exception("Cowrie connection failed during replay_history")
           chan.send(b"Connection to backend lost. Session terminated.\r\n")

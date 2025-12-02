@@ -28,7 +28,7 @@ class SSHConnector:
     finally:
       resource_manager.close_ssh_connection(client=client, transport=transport)
 
-  def replay_history(self, chan, username: str, password: str, history: list[str]):
+  def replay_history(self, username: str, password: str, history: list[str]):
     client = None
     shell = None
     transport = None
