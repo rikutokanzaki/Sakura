@@ -50,6 +50,15 @@ def close_socket(sock):
 def close_ssh_connection(client=None, shell=None, transport=None, channel=None):
   close_shell(shell)
   close_channel(channel)
+
+  if client is not None:
+    try:
+      client_transport = client.get_transport()
+      if client_transport is not None and client_transport != transport:
+        close_transport(client_transport)
+    except Exception:
+      logger.exception("Failed to close transport from client")
+
   close_transport(transport)
   close_client(client)
 

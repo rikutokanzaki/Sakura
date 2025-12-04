@@ -34,9 +34,8 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.username = username
     self.password = password
 
-    heralding_connector = connect_server.SSHConnector(host="heralding")
-
     try:
+      heralding_connector = connect_server.SSHConnector(host="heralding")
       heralding_connector.record_login(username=username, password=password)
     except Exception:
       logger.exception("Failed to record login via heralding_connector")
@@ -74,67 +73,82 @@ class SSHProxyServer(paramiko.ServerInterface):
     except Exception:
       logger.exception("Error triggering cowrie at auth")
 
+def _handle_client(client, addr):
+  transport = None
+  chan = None
+  session_started = False
+  try:
+    logger.info("Connection from %s", addr)
+
+    transport = paramiko.Transport(client)
+    transport.add_server_key(HOST_KEY)
+    server = SSHProxyServer(addr)
+
+    try:
+      transport.start_server(server=server)
+    except paramiko.SSHException:
+      logger.warning("SSH negotiation failed")
+      return
+    except EOFError:
+      logger.info("Client closed connection during handshake (EOF)")
+      return
+    except Exception:
+      logger.exception("Unexpected error during SSH handshake")
+      return
+
+    chan = transport.accept(20)
+    if chan is None:
+      logger.warning("No channel")
+      return
+
+    username = server.username
+    password = server.password
+    start_time = time.time()
+
+    threading.Thread(
+      target=handler.handle_session,
+      args=(chan, username, password, addr, start_time, server.cowrie_launched),
+      daemon=True
+    ).start()
+
+    session_started = True
+
+  except EOFError:
+    logger.info("Client closed connection after authentication (EOF)")
+  except Exception:
+    logger.exception("Error accepting connection")
+  finally:
+    if not session_started:
+      try:
+        if chan is not None:
+          resource_manager.close_channel(chan)
+      except Exception:
+        logger.exception("Failed to close channel in finally (no session)")
+      resource_manager.close_proxy_connection(transport=transport, client=client)
+
 def start_proxy():
   sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
   sock.bind((HOST, PORT))
   sock.listen(100)
   logger.info("SSH Proxy listening on %s:%s", HOST, PORT)
 
-  while True:
-    client = None
-    transport = None
-    session_started = False
-
-    try:
-      client, addr = sock.accept()
-      logger.info("Connection from %s", addr)
-
-      transport = paramiko.Transport(client)
-      transport.add_server_key(HOST_KEY)
-      server = SSHProxyServer(addr)
-
+  try:
+    while True:
       try:
-        transport.start_server(server=server)
-
-      except paramiko.SSHException:
-        logger.warning("SSH negotiation failed")
-        continue
-
-      except EOFError:
-        logger.info("Client closed connection during handshake (EOF)")
-        continue
-
+        client, addr = sock.accept()
       except Exception:
-        logger.exception("Unexpected error during SSH handshake")
+        logger.exception("Socket accept failed")
         continue
 
-      chan = transport.accept(20)
-
-      if chan is None:
-        logger.warning("No channel")
-        continue
-
-      username = server.username
-      password = server.password
-      start_time = time.time()
-
-      threading.Thread(
-        target=handler.handle_session,
-        args=(chan, username, password, addr, start_time, server.cowrie_launched),
-        daemon=True
-      ).start()
-
-      session_started = True
-
-    except EOFError:
-      logger.info("Client closed connection after authentication (EOF)")
-
+      threading.Thread(target=_handle_client, args=(client, addr), daemon=True).start()
+  except Exception:
+    logger.exception("Fatal error in accept loop")
+  finally:
+    try:
+      sock.close()
     except Exception:
-      logger.exception("Error accepting connection")
-
-    finally:
-      if not session_started:
-        resource_manager.close_proxy_connection(transport=transport, client=client)
+      logger.exception("Failed to close listening socket")
 
 if __name__ == "__main__":
   start_proxy()
