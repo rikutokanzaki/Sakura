@@ -75,6 +75,7 @@ class SSHProxyServer(paramiko.ServerInterface):
 
 def _handle_client(client, addr):
   transport = None
+  chan = None
   session_started = False
   try:
     logger.info("Connection from %s", addr)
@@ -118,6 +119,11 @@ def _handle_client(client, addr):
     logger.exception("Error accepting connection")
   finally:
     if not session_started:
+      try:
+        if chan is not None:
+          resource_manager.close_channel(chan)
+      except Exception:
+        logger.exception("Failed to close channel in finally (no session)")
       resource_manager.close_proxy_connection(transport=transport, client=client)
 
 def start_proxy():
