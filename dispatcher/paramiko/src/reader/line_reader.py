@@ -1,11 +1,11 @@
-import logging
 from connector import connect_server
 from utils import ansi_sequences, extract_chars
+import logging
 
 logger = logging.getLogger(__name__)
 
 class LineReader:
-  def __init__(self, chan, username, password, prompt="", history=[]):
+  def __init__(self, chan, username, password, prompt="", history=[], cowrie_connector: connect_server.SSHConnector = None):
     self.chan = chan
     self.username = username
     self.password = password
@@ -17,6 +17,7 @@ class LineReader:
     self.history = history
     self.history_index = -1
     self.max_history_length = 1000
+    self.cowrie_connector = cowrie_connector
 
   def update_prompt(self, new_prompt):
     self.prompt = new_prompt
@@ -61,14 +62,14 @@ class LineReader:
 
     command_with_tab = full_input + "\t"
 
-    cowrie_connector = connect_server.SSHConnector(host="cowrie", port=2222)
-    cwd = cowrie_connector.replay_cwd_only(
+    connector = self.cowrie_connector or connect_server.SSHConnector(host="cowrie", port=2222)
+    cwd = connector.replay_cwd_only(
       username=self.username,
       password=self.password,
       history=self.history
     )
 
-    command, output_chars = cowrie_connector.execute_with_tab(
+    command, output_chars = connector.execute_with_tab(
       cwd,
       command_with_tab,
       self.username,
@@ -95,7 +96,7 @@ class LineReader:
   def handle_escape_sequence(self):
     try:
       seq = self.chan.recv(2)
-    except Exception as e:
+    except Exception:
       logger.exception("Failed to read escape sequence")
       return
 
@@ -139,7 +140,7 @@ class LineReader:
             remainder = b"".join(self.buffer[self.cursor_pos:]) + b" "
             self.chan.send(remainder)
             self.chan.send(f"\x1b[{len(remainder)}D".encode())
-      except Exception as e:
+      except Exception:
         logger.exception("Failed to read DELETE escape sequence")
         return
 
