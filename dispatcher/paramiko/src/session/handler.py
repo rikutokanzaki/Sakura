@@ -41,7 +41,7 @@ def _build_dir_cmd(cwd: str) -> str:
     return ""
   return f"cd {cwd}"
 
-def handle_session(chan, username: str, password: str, addr: tuple, start_time: float, cowrie_launched: bool = False) -> None:
+def handle_session(chan, username: str, password: str, addr: tuple, start_time: float, cowrie_launched: bool, cowrie_connector: connect_server.SSHConnector) -> None:
   history = []
   dir_cmd = ""
 
@@ -50,9 +50,7 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
 
   prompt_manager = set_prompt.PromptManager()
   prompt = prompt_manager.get_prompt(username, hostname, cwd)
-  reader = line_reader.LineReader(chan, username, password, prompt, history)
-
-  cowrie_connector = connect_server.SSHConnector(host="cowrie", port=2222)
+  reader = line_reader.LineReader(chan, username, password, prompt, history, cowrie_connector)
 
   motd_lines = set_motd.get_motd_lines(hostname)
   for line in motd_lines:
