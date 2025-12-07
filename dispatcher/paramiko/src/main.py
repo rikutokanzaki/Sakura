@@ -109,6 +109,7 @@ def _handle_client(client, addr):
     threading.Thread(
       target=handler.handle_session,
       args=(chan, username, password, addr, start_time, server.cowrie_launched, server.cowrie_connector),
+      kwargs={'transport': transport, 'client_socket': client},
       daemon=True
     ).start()
 

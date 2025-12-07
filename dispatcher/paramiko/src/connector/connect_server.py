@@ -1,6 +1,8 @@
 from utils import ansi_sequences, resource_manager
 import logging
+import socket as sock_module
 import paramiko
+import gc
 import re
 import time
 
@@ -12,28 +14,69 @@ class SSHConnector:
     self.port = port
 
   def record_login(self, username: str, password: str):
-    client = None
-    shell = None
+    sock = None
     transport = None
 
     try:
-      client = paramiko.SSHClient()
-      client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-      client.connect(self.host, port=self.port, username=username, password=password, timeout=10)
-      transport = client.get_transport()
+      sock = sock_module.socket(sock_module.AF_INET, sock_module.SOCK_STREAM)
+      sock.settimeout(10)
+      sock.connect((self.host, self.port))
+
+      transport = paramiko.Transport(sock)
+      transport.start_client()
+
+      gc.collect()
+      transports_before_auth = set()
+
+      for obj in gc.get_objects():
+        try:
+          if isinstance(obj, paramiko.Transport):
+            transports_before_auth.add(id(obj))
+        except Exception:
+          pass
 
       try:
-        shell = client.invoke_shell()
-        shell.settimeout(5)
+        transport.auth_password(username, password)
+        logger.info("Heralding auth succeeded (unexpected)")
+      except paramiko.AuthenticationException:
+        logger.debug("Heralding auth failed (expected)")
       except Exception:
-        logger.debug("Shell not available during heralding login record")
+        logger.exception("Auth error")
+
+      gc.collect()
+      leaked_transports = []
+
+      for obj in gc.get_objects():
+        try:
+          if isinstance(obj, paramiko.Transport):
+            obj_id = id(obj)
+            if obj_id not in transports_before_auth and obj_id != id(transport):
+              leaked_transports.append(obj)
+        except Exception:
+          pass
+
+      for leaked_transport in leaked_transports:
+        try:
+          leaked_transport.close()
+        except Exception:
+          logger.exception("Failed to close leaked transport")
 
     except Exception:
       logger.exception("Login recording error")
       raise
 
     finally:
-      resource_manager.close_ssh_connection(client=client, shell=shell, transport=transport)
+      if transport is not None:
+        try:
+          resource_manager.close_transport(transport)
+        except Exception:
+          logger.exception("Failed to close transport in record_login")
+
+      if sock is not None:
+        try:
+          resource_manager.close_socket(sock)
+        except Exception:
+          logger.exception("Failed to close socket in record_login")
 
   def replay_history(self, username: str, password: str, history: list[str]):
     client = None
