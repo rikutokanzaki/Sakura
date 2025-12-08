@@ -16,14 +16,16 @@ import (
 )
 
 type SSHConnector struct {
-	host string
-	port int
+	host          string
+	port          int
+	terminalWidth int
 }
 
 func NewSSHConnector(host string, port int) *SSHConnector {
 	return &SSHConnector{
-		host: host,
-		port: port,
+		host:          host,
+		port:          port,
+		terminalWidth: 80,
 	}
 }
 
@@ -223,11 +225,16 @@ func (c *SSHConnector) connect(username, password string) (*ssh.Client, *sshSess
 		ssh.TTY_OP_OSPEED: 14400,
 	}
 
-	if err := session.RequestPty("xterm", 80, 24, modes); err != nil {
+	termWidth := 80
+	termHeight := 24
+
+	if err := session.RequestPty("xterm", termHeight, termWidth, modes); err != nil {
 		session.Close()
 		client.Close()
 		return nil, nil, err
 	}
+
+	c.terminalWidth = termWidth
 
 	stdin, err := session.StdinPipe()
 	if err != nil {
@@ -392,31 +399,30 @@ func (c *SSHConnector) reformatLsOutput(output string) string {
 		return ""
 	}
 
-	var result []string
-	itemsPerLine := 10
-
-	for i := 0; i < len(allItems); i += itemsPerLine {
-		end := i + itemsPerLine
-		if end > len(allItems) {
-			end = len(allItems)
+	maxItemLen := 0
+	for _, item := range allItems {
+		if len(item) > maxItemLen {
+			maxItemLen = len(item)
 		}
-
-		lineItems := allItems[i:end]
-
-		var formattedItems []string
-		for _, item := range lineItems {
-			formattedItems = append(formattedItems, fmt.Sprintf("%-10s", item))
-		}
-
-		result = append(result, strings.TrimRight(strings.Join(formattedItems, " "), " "))
 	}
 
-	finalOutput := strings.Join(result, "\r\n")
-
-	if len(result) > 0 && !strings.HasSuffix(finalOutput, "\r\n") {
-		finalOutput += "\r\n"
+	columnWidth := maxItemLen + 1
+	if columnWidth < 11 {
+		columnWidth = 11
 	}
 
+	var formattedLine strings.Builder
+	for j, item := range allItems {
+		formattedLine.WriteString(item)
+		if j < len(allItems)-1 {
+			padding := columnWidth - len(item)
+			formattedLine.WriteString(strings.Repeat(" ", padding))
+		}
+	}
+
+	finalOutput := formattedLine.String() + "\r\n"
+
+	log.Printf("[DEBUG] Column width: %d, Total items: %d", columnWidth, len(allItems))
 	log.Printf("[DEBUG] Final reformatted output (with line endings): %q", finalOutput)
 	return finalOutput
 }
