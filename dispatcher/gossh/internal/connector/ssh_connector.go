@@ -1,0 +1,422 @@
+package connector
+
+import (
+	"bytes"
+	"fmt"
+	"gossh/internal/resource"
+	"gossh/internal/utils"
+	"io"
+	"log"
+	"net"
+	"regexp"
+	"strings"
+	"time"
+
+	"golang.org/x/crypto/ssh"
+)
+
+type SSHConnector struct {
+	host string
+	port int
+}
+
+func NewSSHConnector(host string, port int) *SSHConnector {
+	return &SSHConnector{
+		host: host,
+		port: port,
+	}
+}
+
+func (c *SSHConnector) RecordLogin(username, password string) error {
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", c.host, c.port), 10*time.Second)
+	if err != nil {
+		return fmt.Errorf("connection failed: %w", err)
+	}
+	defer resource.CloseSocket(conn)
+
+	config := &ssh.ClientConfig{
+		User: username,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         10 * time.Second,
+	}
+
+	sshConn, chans, reqs, err := ssh.NewClientConn(conn, fmt.Sprintf("%s:%d", c.host, c.port), config)
+	if err != nil {
+		if strings.Contains(err.Error(), "unable to authenticate") {
+			log.Printf("Heralding auth failed (expected)")
+			return nil
+		}
+		return fmt.Errorf("auth error: %w", err)
+	}
+	defer resource.CloseConnection(sshConn)
+
+	go ssh.DiscardRequests(reqs)
+	go func() {
+		for range chans {
+		}
+	}()
+
+	log.Printf("Heralding auth succeeded (unexpected)")
+	return nil
+}
+
+func (c *SSHConnector) ReplayHistory(username, password string, history []string) (string, string, error) {
+	client, session, err := c.connect(username, password)
+	if err != nil {
+		return "", "~", err
+	}
+	defer resource.CloseSSHSession(client, session)
+
+	output := ""
+	cwd := "~"
+
+	if len(history) > 0 {
+		for i, cmd := range history {
+			if err := c.sendCommand(session, cmd); err != nil {
+				return "", "~", err
+			}
+			if i == len(history)-1 {
+				output, cwd, err = c.receiveUntilPrompt(session, cmd)
+				if err != nil {
+					return "", "~", err
+				}
+			}
+		}
+	}
+
+	return output, cwd, nil
+}
+
+func (c *SSHConnector) ReplayCwdOnly(username, password string, history []string) (string, error) {
+	client, session, err := c.connect(username, password)
+	if err != nil {
+		return "~", err
+	}
+	defer resource.CloseSSHSession(client, session)
+
+	cwd := "~"
+	for _, cmd := range history {
+		if strings.HasPrefix(cmd, "cd ") {
+			if err := c.sendCommand(session, cmd); err != nil {
+				return "~", err
+			}
+			_, cwd, err = c.receiveUntilPrompt(session, cmd)
+			if err != nil {
+				return "~", err
+			}
+		}
+	}
+
+	return cwd, nil
+}
+
+func (c *SSHConnector) ExecuteCommand(command, username, password, dirCmd string) (string, string, error) {
+	client, session, err := c.connect(username, password)
+	if err != nil {
+		return "", "~", err
+	}
+	defer resource.CloseSSHSession(client, session)
+
+	if dirCmd != "" {
+		if err := c.sendCommand(session, dirCmd); err != nil {
+			return "", "~", err
+		}
+		if err := c.waitForPrompt(session); err != nil {
+			return "", "~", err
+		}
+	}
+
+	if err := c.sendCommand(session, command); err != nil {
+		return "", "~", err
+	}
+
+	output, cwd, err := c.receiveUntilPrompt(session, command)
+	return output, cwd, err
+}
+
+func (c *SSHConnector) ExecuteWithTab(cwd, command, username, password string) (string, string, error) {
+	client, session, err := c.connect(username, password)
+	if err != nil {
+		return "", "", err
+	}
+	defer resource.CloseSSHSession(client, session)
+
+	if err := c.sendCommand(session, fmt.Sprintf("cd %s", cwd)); err != nil {
+		return "", "", err
+	}
+	if err := c.waitForPrompt(session); err != nil {
+		return "", "", err
+	}
+
+	rawCommand := strings.ReplaceAll(command, "\t", "")
+	if _, err := session.stdin.Write([]byte(rawCommand + "\t")); err != nil {
+		return "", "", err
+	}
+
+	time.Sleep(200 * time.Millisecond)
+
+	var output bytes.Buffer
+	startTime := time.Now()
+	timeout := 1 * time.Second
+
+	buf := make([]byte, 1024)
+	for {
+		if time.Since(startTime) > timeout {
+			break
+		}
+
+		session.stdout.SetReadDeadline(time.Now().Add(50 * time.Millisecond))
+		n, err := session.stdout.Read(buf)
+		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				time.Sleep(50 * time.Millisecond)
+				continue
+			}
+			break
+		}
+
+		output.Write(buf[:n])
+
+		decoded := output.String()
+		cleaned := utils.StripAnsiSequences(decoded)
+
+		if strings.Contains(cleaned, rawCommand) {
+			index := strings.LastIndex(cleaned, rawCommand)
+			if index != -1 && len(cleaned) > index+len(rawCommand) {
+				break
+			}
+		}
+
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	return command, output.String(), nil
+}
+
+func (c *SSHConnector) connect(username, password string) (*ssh.Client, *sshSession, error) {
+	config := &ssh.ClientConfig{
+		User: username,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         10 * time.Second,
+	}
+
+	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", c.host, c.port), config)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	session, err := client.NewSession()
+	if err != nil {
+		client.Close()
+		return nil, nil, err
+	}
+
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          1,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+
+	if err := session.RequestPty("xterm", 80, 24, modes); err != nil {
+		session.Close()
+		client.Close()
+		return nil, nil, err
+	}
+
+	stdin, err := session.StdinPipe()
+	if err != nil {
+		session.Close()
+		client.Close()
+		return nil, nil, err
+	}
+
+	stdout, err := session.StdoutPipe()
+	if err != nil {
+		session.Close()
+		client.Close()
+		return nil, nil, err
+	}
+
+	if err := session.Shell(); err != nil {
+		session.Close()
+		client.Close()
+		return nil, nil, err
+	}
+
+	sessionWrapper := &sshSession{
+		session: session,
+		stdin:   stdin,
+		stdout:  &timeoutReader{Reader: stdout},
+	}
+
+	if err := c.waitForPrompt(sessionWrapper); err != nil {
+		session.Close()
+		client.Close()
+		return nil, nil, err
+	}
+
+	return client, sessionWrapper, nil
+}
+
+type sshSession struct {
+	session *ssh.Session
+	stdin   io.WriteCloser
+	stdout  *timeoutReader
+}
+
+func (s *sshSession) Close() error {
+	if s.session != nil {
+		return s.session.Close()
+	}
+	return nil
+}
+
+type timeoutReader struct {
+	io.Reader
+}
+
+func (t *timeoutReader) SetReadDeadline(deadline time.Time) error {
+	return nil
+}
+
+func (c *SSHConnector) sendCommand(session *sshSession, cmd string) error {
+	_, err := session.stdin.Write([]byte(cmd + "\n"))
+	return err
+}
+
+func (c *SSHConnector) waitForPrompt(session *sshSession) error {
+	buf := make([]byte, 1024)
+	for {
+		n, err := session.stdout.Read(buf)
+		if err != nil {
+			return err
+		}
+
+		data := buf[:n]
+		if bytes.Contains(data, []byte("$ ")) || bytes.Contains(data, []byte("# ")) {
+			break
+		}
+	}
+	return nil
+}
+
+func (c *SSHConnector) receiveUntilPrompt(session *sshSession, sentCmd string) (string, string, error) {
+	var output bytes.Buffer
+	var promptLine []byte
+
+	buf := make([]byte, 1024)
+	for {
+		n, err := session.stdout.Read(buf)
+		if err != nil {
+			return "", "~", err
+		}
+
+		data := buf[:n]
+		output.Write(data)
+
+		if bytes.Contains(data, []byte("$ ")) || bytes.Contains(data, []byte("# ")) {
+			promptLine = data
+			break
+		}
+	}
+
+	rawOutput := output.String()
+	log.Printf("[DEBUG] Command sent: %s", sentCmd)
+	log.Printf("[DEBUG] Raw output from Cowrie:\n%s", rawOutput)
+
+	lines := bytes.Split(output.Bytes(), []byte("\n"))
+	var cleanedLines [][]byte
+
+	cmdToCheck := strings.TrimSpace(sentCmd)
+	isLsCommand := strings.HasPrefix(cmdToCheck, "ls")
+	log.Printf("[DEBUG] Is ls command: %v", isLsCommand)
+
+	for i, line := range lines {
+		lineStr := string(line)
+		trimmedLine := strings.TrimSpace(string(bytes.TrimSpace(line)))
+
+		if trimmedLine == cmdToCheck {
+			log.Printf("[DEBUG] Line %d is exact command match, skipping", i)
+			continue
+		}
+
+		if i == len(lines)-1 {
+			cleanedLineStr := utils.RemovePrompt(lineStr)
+			cleanedLines = append(cleanedLines, []byte(cleanedLineStr))
+		} else {
+			cleanedLines = append(cleanedLines, line)
+		}
+	}
+
+	outputLines := string(bytes.Join(cleanedLines, []byte("\n")))
+
+	if isLsCommand {
+		log.Printf("[DEBUG] Processing ls command output")
+		outputLines = c.reformatLsOutput(outputLines)
+		log.Printf("[DEBUG] Reformatted ls output:\n%s", outputLines)
+	}
+
+	cwd := "~"
+	promptStr := string(bytes.TrimSpace(promptLine))
+	re := regexp.MustCompile(`@[^:]+:(.*?)[\$#] ?`)
+	if matches := re.FindStringSubmatch(promptStr); len(matches) > 1 {
+		cwd = strings.TrimSpace(matches[1])
+	}
+
+	return outputLines, cwd, nil
+}
+
+func (c *SSHConnector) reformatLsOutput(output string) string {
+	lines := strings.Split(output, "\n")
+	var allItems []string
+
+	for _, line := range lines {
+		line = strings.TrimRight(line, "\r")
+		trimmed := strings.TrimSpace(line)
+
+		if trimmed == "" {
+			continue
+		}
+
+		fields := strings.Fields(line)
+		allItems = append(allItems, fields...)
+	}
+
+	if len(allItems) == 0 {
+		return ""
+	}
+
+	var result []string
+	itemsPerLine := 10
+
+	for i := 0; i < len(allItems); i += itemsPerLine {
+		end := i + itemsPerLine
+		if end > len(allItems) {
+			end = len(allItems)
+		}
+
+		lineItems := allItems[i:end]
+
+		var formattedItems []string
+		for _, item := range lineItems {
+			formattedItems = append(formattedItems, fmt.Sprintf("%-10s", item))
+		}
+
+		result = append(result, strings.TrimRight(strings.Join(formattedItems, " "), " "))
+	}
+
+	finalOutput := strings.Join(result, "\r\n")
+
+	if len(result) > 0 && !strings.HasSuffix(finalOutput, "\r\n") {
+		finalOutput += "\r\n"
+	}
+
+	log.Printf("[DEBUG] Final reformatted output (with line endings): %q", finalOutput)
+	return finalOutput
+}
