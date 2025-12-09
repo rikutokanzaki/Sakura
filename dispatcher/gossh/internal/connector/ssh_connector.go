@@ -365,8 +365,6 @@ func (c *SSHConnector) receiveUntilPrompt(session *sshSession, sentCmd string) (
 	var cleanedLines [][]byte
 
 	cmdToCheck := strings.TrimSpace(sentCmd)
-	isLsCommand := strings.HasPrefix(cmdToCheck, "ls")
-	log.Printf("[DEBUG] Is ls command: %v", isLsCommand)
 
 	for i, line := range lines {
 		lineStr := string(line)
@@ -387,10 +385,10 @@ func (c *SSHConnector) receiveUntilPrompt(session *sshSession, sentCmd string) (
 
 	outputLines := string(bytes.Join(cleanedLines, []byte("\n")))
 
-	if isLsCommand {
-		log.Printf("[DEBUG] Processing ls command output")
-		outputLines = c.formatLsOutputLikeCowrie(outputLines)
-		log.Printf("[DEBUG] Formatted ls output:\n%s", outputLines)
+	if c.containsLsCommand(cmdToCheck) {
+		log.Printf("[DEBUG] Processing compound command with ls")
+		outputLines = c.formatCompoundCommandOutput(outputLines, cmdToCheck)
+		log.Printf("[DEBUG] Formatted compound output:\n%s", outputLines)
 	}
 
 	cwd := "~"
@@ -401,6 +399,106 @@ func (c *SSHConnector) receiveUntilPrompt(session *sshSession, sentCmd string) (
 	}
 
 	return outputLines, cwd, nil
+}
+
+func (c *SSHConnector) containsLsCommand(cmd string) bool {
+	separators := []string{"&&", "||", ";", "|"}
+
+	parts := []string{cmd}
+	for _, sep := range separators {
+		var newParts []string
+		for _, part := range parts {
+			newParts = append(newParts, strings.Split(part, sep)...)
+		}
+		parts = newParts
+	}
+
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if strings.HasPrefix(trimmed, "ls") {
+			afterLs := strings.TrimPrefix(trimmed, "ls")
+			if afterLs == "" || afterLs[0] == ' ' || afterLs[0] == '\t' {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func (c *SSHConnector) formatCompoundCommandOutput(output, cmd string) string {
+	separators := []string{"&&", "||", ";", "|"}
+
+	parts := []string{cmd}
+	for _, sep := range separators {
+		var newParts []string
+		for _, part := range parts {
+			newParts = append(newParts, strings.Split(part, sep)...)
+		}
+		parts = newParts
+	}
+
+	var lsCommands []string
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if strings.HasPrefix(trimmed, "ls") {
+			afterLs := strings.TrimPrefix(trimmed, "ls")
+			if afterLs == "" || afterLs[0] == ' ' || afterLs[0] == '\t' {
+				lsCommands = append(lsCommands, trimmed)
+			}
+		}
+	}
+
+	if len(lsCommands) == 0 {
+		return output
+	}
+
+	outputLines := strings.Split(output, "\n")
+	var result []string
+	inLsOutput := false
+	var lsBuffer []string
+
+	for _, line := range outputLines {
+		trimmed := strings.TrimSpace(line)
+
+		if !inLsOutput {
+			isLsStart := false
+			for _, lsCmd := range lsCommands {
+				if strings.HasPrefix(trimmed, strings.Fields(lsCmd)[0]) {
+					possibleItems := strings.Fields(trimmed)
+					if len(possibleItems) > 0 && (possibleItems[0] == "." || possibleItems[0] == "..") {
+						isLsStart = true
+						break
+					}
+				}
+			}
+
+			if isLsStart {
+				inLsOutput = true
+				lsBuffer = []string{line}
+			} else {
+				result = append(result, line)
+			}
+		} else {
+			if trimmed == "" || strings.Contains(trimmed, "Filesystem") ||
+				strings.Contains(trimmed, "rootfs") || strings.Contains(trimmed, "udev") {
+				formattedLs := c.formatLsOutputLikeCowrie(strings.Join(lsBuffer, "\n"))
+				result = append(result, strings.TrimRight(formattedLs, "\r\n"))
+				result = append(result, line)
+				inLsOutput = false
+				lsBuffer = nil
+			} else {
+				lsBuffer = append(lsBuffer, line)
+			}
+		}
+	}
+
+	if inLsOutput && len(lsBuffer) > 0 {
+		formattedLs := c.formatLsOutputLikeCowrie(strings.Join(lsBuffer, "\n"))
+		result = append(result, strings.TrimRight(formattedLs, "\r\n"))
+	}
+
+	return strings.Join(result, "\n")
 }
 
 func (c *SSHConnector) formatLsOutputLikeCowrie(output string) string {
