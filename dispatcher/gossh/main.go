@@ -130,14 +130,29 @@ func handleClient(tcpConn net.Conn, hostKey ssh.Signer) {
 				resource.CloseChannel(ch)
 			}()
 
+			var sessionStarted bool
 			for req := range reqs {
 				switch req.Type {
 				case "pty-req":
 					req.Reply(true, nil)
 				case "shell":
 					req.Reply(true, nil)
-					startTime := time.Now()
-					handler.HandleSession(ch, username, password, addr, startTime, cowrieLaunched, cowrieConnector, sshConn, tcpConn)
+					if !sessionStarted {
+						sessionStarted = true
+						startTime := time.Now()
+						handler.HandleSession(
+							ch,
+							reqs,
+							username,
+							password,
+							addr,
+							startTime,
+							cowrieLaunched,
+							cowrieConnector,
+							sshConn,
+							tcpConn,
+						)
+					}
 					return
 				case "exec":
 					req.Reply(true, nil)

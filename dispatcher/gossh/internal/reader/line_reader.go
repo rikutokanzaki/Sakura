@@ -23,6 +23,7 @@ type LineReader struct {
 	historyIndex     int
 	maxHistoryLength int
 	cowrieConnector  *connector.SSHConnector
+	temporaryInput   []rune
 }
 
 func NewLineReader(
@@ -44,6 +45,7 @@ func NewLineReader(
 		historyIndex:     -1,
 		maxHistoryLength: 1000,
 		cowrieConnector:  cowrieConnector,
+		temporaryInput:   []rune{},
 	}
 }
 
@@ -73,6 +75,11 @@ func (lr *LineReader) redrawBuffer() {
 func (lr *LineReader) setBufferFromHistory() {
 	if lr.historyIndex >= 0 && lr.historyIndex < len(lr.history) {
 		lr.buffer = []rune(lr.history[lr.historyIndex])
+		lr.cursorPos = len(lr.buffer)
+		lr.redrawBuffer()
+		lr.prevRenderedLen = len(lr.buffer)
+	} else if lr.historyIndex == -1 {
+		lr.buffer = append([]rune{}, lr.temporaryInput...)
 		lr.cursorPos = len(lr.buffer)
 		lr.redrawBuffer()
 		lr.prevRenderedLen = len(lr.buffer)
@@ -118,10 +125,8 @@ func (lr *LineReader) handleTabCompletion() {
 			insertionIndex := tokenStart + len(lastToken)
 			completionRunes := []rune(completionDiff)
 
-			// バッファの挿入位置以降を保存
 			tail := append([]rune{}, lr.buffer[insertionIndex:]...)
 
-			// バッファを再構築
 			lr.buffer = append(lr.buffer[:insertionIndex], completionRunes...)
 			lr.buffer = append(lr.buffer, tail...)
 
@@ -143,17 +148,28 @@ func (lr *LineReader) handleEscapeSequence() {
 	case "[A":
 		if len(lr.history) > 0 {
 			if lr.historyIndex == -1 {
+				lr.temporaryInput = append([]rune{}, lr.buffer...)
 				lr.historyIndex = len(lr.history) - 1
 			} else if lr.historyIndex > 0 {
 				lr.historyIndex--
+			} else {
+				return
 			}
 			lr.setBufferFromHistory()
 		}
 
 	case "[B":
-		if len(lr.history) > 0 && lr.historyIndex < len(lr.history)-1 {
+		if lr.historyIndex == -1 {
+			return
+		}
+
+		if lr.historyIndex < len(lr.history)-1 {
 			lr.historyIndex++
 			lr.setBufferFromHistory()
+		} else {
+			lr.historyIndex = -1
+			lr.setBufferFromHistory()
+			lr.temporaryInput = []rune{}
 		}
 
 	case "[C":
@@ -188,6 +204,7 @@ func (lr *LineReader) Read() string {
 	lr.buffer = []rune{}
 	lr.cursorPos = 0
 	lr.historyIndex = -1
+	lr.temporaryInput = []rune{}
 	lr.channel.Write([]byte("\r\x1b[2K"))
 	lr.sendPrompt()
 
@@ -229,6 +246,10 @@ func (lr *LineReader) Read() string {
 					lr.channel.Write([]byte(fmt.Sprintf("\x1b[%dD", len(remainder))))
 				}
 			}
+
+			if lr.historyIndex != -1 {
+				lr.temporaryInput = append([]rune{}, lr.buffer...)
+			}
 			continue
 		}
 
@@ -246,6 +267,10 @@ func (lr *LineReader) Read() string {
 			remainder := string(lr.buffer[lr.cursorPos-1:])
 			lr.channel.Write([]byte(remainder))
 			lr.channel.Write([]byte(fmt.Sprintf("\x1b[%dD", len(remainder)-1)))
+		}
+
+		if lr.historyIndex != -1 {
+			lr.temporaryInput = append([]rune{}, lr.buffer...)
 		}
 	}
 

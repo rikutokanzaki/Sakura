@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/binary"
 	"fmt"
 	"gossh/internal/connector"
 	"gossh/internal/logger"
@@ -63,6 +64,7 @@ func buildDirCmd(cwd string) string {
 
 func HandleSession(
 	channel ssh.Channel,
+	requests <-chan *ssh.Request,
 	username, password, addr string,
 	startTime time.Time,
 	cowrieLaunched bool,
@@ -78,10 +80,34 @@ func HandleSession(
 		hostname = hostname[:9]
 	}
 
+	termWidth := cowrieConnector.GetTerminalWidth()
+	termHeight := cowrieConnector.GetTerminalHeight()
+	log.Printf("[SESSION_START] Initial terminal size: width=%d, height=%d", termWidth, termHeight)
+
+	go func() {
+		for req := range requests {
+			switch req.Type {
+			case "window-change":
+				width, height := parseWindowChange(req.Payload)
+				termWidth = int(width)
+				termHeight = int(height)
+				log.Printf("[WINDOW_CHANGE] Terminal size changed: width=%d, height=%d (user=%s, addr=%s)",
+					width, height, username, addr)
+				cowrieConnector.UpdateTerminalSize(termWidth, termHeight)
+				if req.WantReply {
+					req.Reply(true, nil)
+				}
+			default:
+				if req.WantReply {
+					req.Reply(false, nil)
+				}
+			}
+		}
+	}()
+
 	prompt := utils.GetPrompt(username, hostname, cwd)
 	lineReader := reader.NewLineReader(channel, username, password, prompt, history, cowrieConnector)
 
-	// MOTDの前に空行を追加
 	channel.Write([]byte("\r\n"))
 
 	motdLines := utils.GetMotdLines(hostname)
@@ -180,6 +206,15 @@ func HandleSession(
 		channel.Write([]byte(output))
 		updateSession(false)
 	}
+}
+
+func parseWindowChange(payload []byte) (width, height uint32) {
+	if len(payload) < 8 {
+		return 80, 24
+	}
+	width = binary.BigEndian.Uint32(payload[0:4])
+	height = binary.BigEndian.Uint32(payload[4:8])
+	return
 }
 
 func parseAddr(addr string) (string, int) {

@@ -10,23 +10,47 @@ import (
 	"net"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/ssh"
 )
 
 type SSHConnector struct {
-	host          string
-	port          int
-	terminalWidth int
+	host           string
+	port           int
+	terminalWidth  int
+	terminalHeight int
+	mu             sync.RWMutex
 }
 
 func NewSSHConnector(host string, port int) *SSHConnector {
 	return &SSHConnector{
-		host:          host,
-		port:          port,
-		terminalWidth: 80,
+		host:           host,
+		port:           port,
+		terminalWidth:  80,
+		terminalHeight: 24,
 	}
+}
+
+func (c *SSHConnector) UpdateTerminalSize(width, height int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.terminalWidth = width
+	c.terminalHeight = height
+	log.Printf("[TERM_SIZE] Updated terminal size: width=%d, height=%d", width, height)
+}
+
+func (c *SSHConnector) GetTerminalWidth() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.terminalWidth
+}
+
+func (c *SSHConnector) GetTerminalHeight() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.terminalHeight
 }
 
 func (c *SSHConnector) RecordLogin(username, password string) error {
@@ -225,16 +249,16 @@ func (c *SSHConnector) connect(username, password string) (*ssh.Client, *sshSess
 		ssh.TTY_OP_OSPEED: 14400,
 	}
 
-	termWidth := 80
-	termHeight := 24
+	termWidth := c.GetTerminalWidth()
+	termHeight := c.GetTerminalHeight()
+
+	log.Printf("[SSH_CONNECT] Requesting PTY with width=%d, height=%d", termWidth, termHeight)
 
 	if err := session.RequestPty("xterm", termHeight, termWidth, modes); err != nil {
 		session.Close()
 		client.Close()
 		return nil, nil, err
 	}
-
-	c.terminalWidth = termWidth
 
 	stdin, err := session.StdinPipe()
 	if err != nil {
@@ -365,8 +389,8 @@ func (c *SSHConnector) receiveUntilPrompt(session *sshSession, sentCmd string) (
 
 	if isLsCommand {
 		log.Printf("[DEBUG] Processing ls command output")
-		outputLines = c.reformatLsOutput(outputLines)
-		log.Printf("[DEBUG] Reformatted ls output:\n%s", outputLines)
+		outputLines = c.formatLsOutputLikeCowrie(outputLines)
+		log.Printf("[DEBUG] Formatted ls output:\n%s", outputLines)
 	}
 
 	cwd := "~"
@@ -379,7 +403,7 @@ func (c *SSHConnector) receiveUntilPrompt(session *sshSession, sentCmd string) (
 	return outputLines, cwd, nil
 }
 
-func (c *SSHConnector) reformatLsOutput(output string) string {
+func (c *SSHConnector) formatLsOutputLikeCowrie(output string) string {
 	lines := strings.Split(output, "\n")
 	var allItems []string
 
@@ -406,23 +430,44 @@ func (c *SSHConnector) reformatLsOutput(output string) string {
 		}
 	}
 
-	columnWidth := maxItemLen + 1
+	columnWidth := maxItemLen + 2
 	if columnWidth < 11 {
 		columnWidth = 11
 	}
 
-	var formattedLine strings.Builder
-	for j, item := range allItems {
-		formattedLine.WriteString(item)
-		if j < len(allItems)-1 {
-			padding := columnWidth - len(item)
-			formattedLine.WriteString(strings.Repeat(" ", padding))
+	termWidth := c.GetTerminalWidth()
+	log.Printf("[LS_FORMAT] Terminal width: %d, Column width: %d, Max item length: %d", termWidth, columnWidth, maxItemLen)
+	log.Printf("[LS_FORMAT] Items to format: %v", allItems)
+
+	var result strings.Builder
+	currentLineWidth := 0
+
+	for i, item := range allItems {
+		itemWidth := len(item)
+		paddedWidth := columnWidth
+
+		log.Printf("[LS_FORMAT] Item %d: '%s' (width=%d), currentLineWidth=%d, paddedWidth=%d",
+			i, item, itemWidth, currentLineWidth, paddedWidth)
+
+		if currentLineWidth > 0 && currentLineWidth+paddedWidth > termWidth {
+			log.Printf("[LS_FORMAT] Line break: currentLineWidth(%d) + paddedWidth(%d) > termWidth(%d)",
+				currentLineWidth, paddedWidth, termWidth)
+			result.WriteString("\r\n")
+			currentLineWidth = 0
+		}
+
+		result.WriteString(item)
+		currentLineWidth += itemWidth
+
+		if i < len(allItems)-1 {
+			padding := columnWidth - itemWidth
+			result.WriteString(strings.Repeat(" ", padding))
+			currentLineWidth += padding
+			log.Printf("[LS_FORMAT] Added padding: %d spaces, new currentLineWidth=%d", padding, currentLineWidth)
 		}
 	}
 
-	finalOutput := formattedLine.String() + "\r\n"
-
-	log.Printf("[DEBUG] Column width: %d, Total items: %d", columnWidth, len(allItems))
-	log.Printf("[DEBUG] Final reformatted output (with line endings): %q", finalOutput)
+	finalOutput := result.String() + "\r\n"
+	log.Printf("[LS_FORMAT] Final output length: %d characters", len(finalOutput))
 	return finalOutput
 }
