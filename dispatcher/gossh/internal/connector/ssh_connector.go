@@ -425,12 +425,13 @@ func (c *SSHConnector) formatLsOutputLikeCowrie(output string) string {
 
 	maxItemLen := 0
 	for _, item := range allItems {
-		if len(item) > maxItemLen {
-			maxItemLen = len(item)
+		cleanedItem := utils.StripAnsiSequences(item)
+		if len(cleanedItem) > maxItemLen {
+			maxItemLen = len(cleanedItem)
 		}
 	}
 
-	columnWidth := maxItemLen + 1
+	columnWidth := maxItemLen + 2
 	if columnWidth < 11 {
 		columnWidth = 11
 	}
@@ -443,15 +444,15 @@ func (c *SSHConnector) formatLsOutputLikeCowrie(output string) string {
 	currentLineWidth := 0
 
 	for i, item := range allItems {
-		itemWidth := len(item)
-		paddedWidth := columnWidth
+		cleanedItem := utils.StripAnsiSequences(item)
+		itemWidth := len(cleanedItem)
 
-		log.Printf("[LS_FORMAT] Item %d: '%s' (width=%d), currentLineWidth=%d, paddedWidth=%d",
-			i, item, itemWidth, currentLineWidth, paddedWidth)
+		log.Printf("[LS_FORMAT] Item %d: '%s' (cleaned: '%s', width=%d), currentLineWidth=%d, columnWidth=%d",
+			i, item, cleanedItem, itemWidth, currentLineWidth, columnWidth)
 
-		if currentLineWidth > 0 && currentLineWidth+paddedWidth > termWidth {
-			log.Printf("[LS_FORMAT] Line break: currentLineWidth(%d) + paddedWidth(%d) > termWidth(%d)",
-				currentLineWidth, paddedWidth, termWidth)
+		if currentLineWidth > 0 && currentLineWidth+columnWidth > termWidth {
+			log.Printf("[LS_FORMAT] Line break: currentLineWidth(%d) + columnWidth(%d) > termWidth(%d)",
+				currentLineWidth, columnWidth, termWidth)
 			result.WriteString("\r\n")
 			currentLineWidth = 0
 		}
