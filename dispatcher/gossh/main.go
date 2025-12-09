@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/binary"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -134,7 +135,21 @@ func handleClient(tcpConn net.Conn, hostKey ssh.Signer) {
 			for req := range reqs {
 				switch req.Type {
 				case "pty-req":
+					width, height := parsePtyRequest(req.Payload)
+					log.Printf("[PTY_REQ] Initial terminal size from client: width=%d, height=%d (user=%s, addr=%s)",
+						width, height, username, addr)
+					cowrieConnector.UpdateTerminalSize(int(width), int(height))
 					req.Reply(true, nil)
+
+				case "window-change":
+					width, height := parseWindowChange(req.Payload)
+					log.Printf("[WINDOW_CHANGE] Terminal size updated: width=%d, height=%d (user=%s, addr=%s)",
+						width, height, username, addr)
+					cowrieConnector.UpdateTerminalSize(int(width), int(height))
+					if req.WantReply {
+						req.Reply(true, nil)
+					}
+
 				case "shell":
 					req.Reply(true, nil)
 					if !sessionStarted {
@@ -154,8 +169,10 @@ func handleClient(tcpConn net.Conn, hostKey ssh.Signer) {
 						)
 					}
 					return
+
 				case "exec":
 					req.Reply(true, nil)
+
 				default:
 					if req.WantReply {
 						req.Reply(false, nil)
@@ -167,6 +184,24 @@ func handleClient(tcpConn net.Conn, hostKey ssh.Signer) {
 
 	resource.CloseConnection(sshConn)
 	resource.CloseSocket(tcpConn)
+}
+
+func parsePtyRequest(payload []byte) (width, height uint32) {
+	if len(payload) < 12 {
+		return 80, 24
+	}
+	width = binary.BigEndian.Uint32(payload[4:8])
+	height = binary.BigEndian.Uint32(payload[8:12])
+	return
+}
+
+func parseWindowChange(payload []byte) (width, height uint32) {
+	if len(payload) < 8 {
+		return 80, 24
+	}
+	width = binary.BigEndian.Uint32(payload[0:4])
+	height = binary.BigEndian.Uint32(payload[4:8])
+	return
 }
 
 func triggerCowrie(launched *bool) {

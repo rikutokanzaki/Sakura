@@ -430,7 +430,7 @@ func (c *SSHConnector) formatLsOutputLikeCowrie(output string) string {
 		}
 	}
 
-	columnWidth := maxItemLen + 2
+	columnWidth := maxItemLen + 1
 	if columnWidth < 11 {
 		columnWidth = 11
 	}
