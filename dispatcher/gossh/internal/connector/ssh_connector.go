@@ -38,7 +38,6 @@ func (c *SSHConnector) UpdateTerminalSize(width, height int) {
 	defer c.mu.Unlock()
 	c.terminalWidth = width
 	c.terminalHeight = height
-	log.Printf("[TERM_SIZE] Updated terminal size: width=%d, height=%d", width, height)
 }
 
 func (c *SSHConnector) GetTerminalWidth() int {
@@ -252,8 +251,6 @@ func (c *SSHConnector) connect(username, password string) (*ssh.Client, *sshSess
 	termWidth := c.GetTerminalWidth()
 	termHeight := c.GetTerminalHeight()
 
-	log.Printf("[SSH_CONNECT] Requesting PTY with width=%d, height=%d", termWidth, termHeight)
-
 	if err := session.RequestPty("xterm", termHeight, termWidth, modes); err != nil {
 		session.Close()
 		client.Close()
@@ -357,10 +354,6 @@ func (c *SSHConnector) receiveUntilPrompt(session *sshSession, sentCmd string) (
 		}
 	}
 
-	rawOutput := output.String()
-	log.Printf("[DEBUG] Command sent: %s", sentCmd)
-	log.Printf("[DEBUG] Raw output from Cowrie:\n%s", rawOutput)
-
 	lines := bytes.Split(output.Bytes(), []byte("\n"))
 	var cleanedLines [][]byte
 
@@ -371,7 +364,6 @@ func (c *SSHConnector) receiveUntilPrompt(session *sshSession, sentCmd string) (
 		trimmedLine := strings.TrimSpace(string(bytes.TrimSpace(line)))
 
 		if trimmedLine == cmdToCheck {
-			log.Printf("[DEBUG] Line %d is exact command match, skipping", i)
 			continue
 		}
 
@@ -386,9 +378,7 @@ func (c *SSHConnector) receiveUntilPrompt(session *sshSession, sentCmd string) (
 	outputLines := string(bytes.Join(cleanedLines, []byte("\n")))
 
 	if c.containsLsCommand(cmdToCheck) {
-		log.Printf("[DEBUG] Processing compound command with ls")
 		outputLines = c.formatCompoundCommandOutput(outputLines, cmdToCheck)
-		log.Printf("[DEBUG] Formatted compound output:\n%s", outputLines)
 	}
 
 	cwd := "~"
@@ -535,8 +525,6 @@ func (c *SSHConnector) formatLsOutputLikeCowrie(output string) string {
 	}
 
 	termWidth := c.GetTerminalWidth()
-	log.Printf("[LS_FORMAT] Terminal width: %d, Column width: %d, Max item length: %d", termWidth, columnWidth, maxItemLen)
-	log.Printf("[LS_FORMAT] Items to format: %v", allItems)
 
 	var result strings.Builder
 	currentLineWidth := 0
@@ -545,12 +533,7 @@ func (c *SSHConnector) formatLsOutputLikeCowrie(output string) string {
 		cleanedItem := utils.StripAnsiSequences(item)
 		itemWidth := len(cleanedItem)
 
-		log.Printf("[LS_FORMAT] Item %d: '%s' (cleaned: '%s', width=%d), currentLineWidth=%d, columnWidth=%d",
-			i, item, cleanedItem, itemWidth, currentLineWidth, columnWidth)
-
 		if currentLineWidth > 0 && currentLineWidth+columnWidth > termWidth {
-			log.Printf("[LS_FORMAT] Line break: currentLineWidth(%d) + columnWidth(%d) > termWidth(%d)",
-				currentLineWidth, columnWidth, termWidth)
 			result.WriteString("\r\n")
 			currentLineWidth = 0
 		}
@@ -562,11 +545,9 @@ func (c *SSHConnector) formatLsOutputLikeCowrie(output string) string {
 			padding := columnWidth - itemWidth
 			result.WriteString(strings.Repeat(" ", padding))
 			currentLineWidth += padding
-			log.Printf("[LS_FORMAT] Added padding: %d spaces, new currentLineWidth=%d", padding, currentLineWidth)
 		}
 	}
 
 	finalOutput := result.String() + "\r\n"
-	log.Printf("[LS_FORMAT] Final output length: %d characters", len(finalOutput))
 	return finalOutput
 }

@@ -136,15 +136,11 @@ func handleClient(tcpConn net.Conn, hostKey ssh.Signer) {
 				switch req.Type {
 				case "pty-req":
 					width, height := parsePtyRequest(req.Payload)
-					log.Printf("[PTY_REQ] Initial terminal size from client: width=%d, height=%d (user=%s, addr=%s)",
-						width, height, username, addr)
 					cowrieConnector.UpdateTerminalSize(int(width), int(height))
 					req.Reply(true, nil)
 
 				case "window-change":
 					width, height := parseWindowChange(req.Payload)
-					log.Printf("[WINDOW_CHANGE] Terminal size updated: width=%d, height=%d (user=%s, addr=%s)",
-						width, height, username, addr)
 					cowrieConnector.UpdateTerminalSize(int(width), int(height))
 					if req.WantReply {
 						req.Reply(true, nil)

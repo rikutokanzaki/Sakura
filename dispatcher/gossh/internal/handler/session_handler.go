@@ -82,7 +82,6 @@ func HandleSession(
 
 	termWidth := cowrieConnector.GetTerminalWidth()
 	termHeight := cowrieConnector.GetTerminalHeight()
-	log.Printf("[SESSION_START] Initial terminal size: width=%d, height=%d", termWidth, termHeight)
 
 	go func() {
 		for req := range requests {
@@ -91,8 +90,6 @@ func HandleSession(
 				width, height := parseWindowChange(req.Payload)
 				termWidth = int(width)
 				termHeight = int(height)
-				log.Printf("[WINDOW_CHANGE] Terminal size changed: width=%d, height=%d (user=%s, addr=%s)",
-					width, height, username, addr)
 				cowrieConnector.UpdateTerminalSize(termWidth, termHeight)
 				if req.WantReply {
 					req.Reply(true, nil)
