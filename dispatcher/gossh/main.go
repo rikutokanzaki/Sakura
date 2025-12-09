@@ -190,8 +190,17 @@ func parsePtyRequest(payload []byte) (width, height uint32) {
 	if len(payload) < 12 {
 		return 80, 24
 	}
-	width = binary.BigEndian.Uint32(payload[4:8])
-	height = binary.BigEndian.Uint32(payload[8:12])
+
+	termNameLen := binary.BigEndian.Uint32(payload[0:4])
+	offset := 4 + termNameLen
+
+	if len(payload) < int(offset)+8 {
+		return 80, 24
+	}
+
+	width = binary.BigEndian.Uint32(payload[offset : offset+4])
+	height = binary.BigEndian.Uint32(payload[offset+4 : offset+8])
+
 	return
 }
 
