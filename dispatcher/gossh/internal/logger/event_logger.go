@@ -78,8 +78,14 @@ func writeLog(logData map[string]interface{}) {
 	}
 	defer resource.CloseFile(f)
 
-	f.Write(jsonData)
-	f.Write([]byte("\n"))
+	if _, err := f.Write(jsonData); err != nil {
+		log.Printf("Failed to write log data: %v", err)
+		return
+	}
+
+	if _, err := f.Write([]byte("\n")); err != nil {
+		log.Printf("Failed to write newline: %v", err)
+	}
 }
 
 func parseAddrPair(addr string) (string, int) {

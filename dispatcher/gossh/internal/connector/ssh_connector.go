@@ -78,9 +78,38 @@ func (c *SSHConnector) RecordLogin(username, password string) error {
 	}
 	defer resource.CloseConnection(sshConn)
 
-	go ssh.DiscardRequests(reqs)
+	done := make(chan struct{})
+	defer close(done)
+
 	go func() {
-		for range chans {
+		for {
+			select {
+			case req, ok := <-reqs:
+				if !ok {
+					return
+				}
+				if req != nil && req.WantReply {
+					req.Reply(false, nil)
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case ch, ok := <-chans:
+				if !ok {
+					return
+				}
+				if ch != nil {
+					ch.Reject(ssh.UnknownChannelType, "not accepting channels")
+				}
+			case <-done:
+				return
+			}
 		}
 	}()
 
@@ -467,7 +496,7 @@ func (c *SSHConnector) formatCompoundCommandOutput(output, cmd string) string {
 		} else {
 			if trimmed == "" || strings.Contains(trimmed, "Filesystem") ||
 				strings.Contains(trimmed, "rootfs") || strings.Contains(trimmed, "udev") {
-				formattedLs := c.formatLsOutputLikeCowrie(strings.Join(lsBuffer, "\n"))
+				formattedLs := c.formatLsOutput(strings.Join(lsBuffer, "\n"))
 				result = append(result, strings.TrimRight(formattedLs, "\r\n"))
 				result = append(result, line)
 				inLsOutput = false
@@ -479,14 +508,14 @@ func (c *SSHConnector) formatCompoundCommandOutput(output, cmd string) string {
 	}
 
 	if inLsOutput && len(lsBuffer) > 0 {
-		formattedLs := c.formatLsOutputLikeCowrie(strings.Join(lsBuffer, "\n"))
+		formattedLs := c.formatLsOutput(strings.Join(lsBuffer, "\n"))
 		result = append(result, strings.TrimRight(formattedLs, "\r\n"))
 	}
 
 	return strings.Join(result, "\n")
 }
 
-func (c *SSHConnector) formatLsOutputLikeCowrie(output string) string {
+func (c *SSHConnector) formatLsOutput(output string) string {
 	lines := strings.Split(output, "\n")
 	var allItems []string
 

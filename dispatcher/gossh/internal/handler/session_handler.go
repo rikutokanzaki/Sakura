@@ -48,12 +48,22 @@ func updateSession(force bool) {
 	lastUpdateAt = now
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Panic in updateSession goroutine: %v", r)
+			}
+		}()
+
 		resp, err := httpClient.Post(updateSessionURL, "application/json", nil)
 		if err != nil {
 			log.Printf("Session update failed: %v", err)
 			return
 		}
-		resource.CloseResponseBody(resp.Body)
+		defer resource.CloseResponseBody(resp.Body)
+
+		if resp.StatusCode != 200 {
+			log.Printf("Session update returned non-200 status: %d", resp.StatusCode)
+		}
 	}()
 }
 
