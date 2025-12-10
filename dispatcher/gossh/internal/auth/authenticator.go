@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bufio"
+	"gossh/internal/resource"
 	"log"
 	"os"
 	"strings"
@@ -26,7 +27,7 @@ func NewAuthenticator(userFile string) *Authenticator {
 		log.Printf("User file '%s' not found: %v", userFile, err)
 		return a
 	}
-	defer file.Close()
+	defer resource.CloseFile(file)
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

@@ -238,7 +238,7 @@ func (c *SSHConnector) connect(username, password string) (*ssh.Client, *sshSess
 
 	session, err := client.NewSession()
 	if err != nil {
-		client.Close()
+		resource.CloseClient(client)
 		return nil, nil, err
 	}
 
@@ -252,28 +252,24 @@ func (c *SSHConnector) connect(username, password string) (*ssh.Client, *sshSess
 	termHeight := c.GetTerminalHeight()
 
 	if err := session.RequestPty("xterm", termHeight, termWidth, modes); err != nil {
-		session.Close()
-		client.Close()
+		resource.CloseClientAndSession(client, session)
 		return nil, nil, err
 	}
 
 	stdin, err := session.StdinPipe()
 	if err != nil {
-		session.Close()
-		client.Close()
+		resource.CloseClientAndSession(client, session)
 		return nil, nil, err
 	}
 
 	stdout, err := session.StdoutPipe()
 	if err != nil {
-		session.Close()
-		client.Close()
+		resource.CloseClientAndSession(client, session)
 		return nil, nil, err
 	}
 
 	if err := session.Shell(); err != nil {
-		session.Close()
-		client.Close()
+		resource.CloseClientAndSession(client, session)
 		return nil, nil, err
 	}
 
@@ -284,8 +280,7 @@ func (c *SSHConnector) connect(username, password string) (*ssh.Client, *sshSess
 	}
 
 	if err := c.waitForPrompt(sessionWrapper); err != nil {
-		session.Close()
-		client.Close()
+		resource.CloseClientAndSession(client, session)
 		return nil, nil, err
 	}
 

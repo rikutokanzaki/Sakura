@@ -48,10 +48,12 @@ func updateSession(force bool) {
 	lastUpdateAt = now
 
 	go func() {
-		_, err := httpClient.Post(updateSessionURL, "application/json", nil)
+		resp, err := httpClient.Post(updateSessionURL, "application/json", nil)
 		if err != nil {
 			log.Printf("Session update failed: %v", err)
+			return
 		}
+		resource.CloseResponseBody(resp.Body)
 	}()
 }
 
@@ -128,9 +130,7 @@ func HandleSession(
 		logger.LogSessionClose(srcIP, srcPort, username, duration, "Session closed")
 
 		lineReader.CleanupTerminal()
-		resource.CloseChannel(channel)
-		resource.CloseConnection(sshConn)
-		resource.CloseSocket(tcpConn)
+		resource.CloseFullSSHConnection(channel, sshConn, tcpConn)
 	}()
 
 	for {
@@ -161,10 +161,10 @@ func HandleSession(
 
 			if resp.StatusCode == 200 {
 				log.Printf("Cowrie started. Transferring session...")
-				resp.Body.Close()
+				resource.CloseResponseBody(resp.Body)
 			} else {
 				log.Printf("Failed to start Cowrie (HTTP %d)", resp.StatusCode)
-				resp.Body.Close()
+				resource.CloseResponseBody(resp.Body)
 				channel.Write([]byte("Service unavailable. Session terminated.\r\n"))
 				break
 			}

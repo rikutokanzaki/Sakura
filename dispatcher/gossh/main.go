@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen on %s:%d: %v", host, port, err)
 	}
-	defer listener.Close()
+	defer resource.CloseListener(listener)
 
 	log.Printf("SSH Proxy listening on %s:%d", host, port)
 
@@ -216,7 +216,7 @@ func triggerCowrie(launched *bool) {
 		log.Printf("Error triggering cowrie at auth: %v", err)
 		return
 	}
-	defer resp.Body.Close()
+	defer resource.CloseResponseBody(resp.Body)
 
 	if resp.StatusCode == 200 {
 		log.Printf("Cowrie started in auth stage")
@@ -243,7 +243,7 @@ func loadOrGenerateHostKey(keyPath string) (ssh.Signer, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer keyFile.Close()
+		defer resource.CloseFile(keyFile)
 
 		if err := pem.Encode(keyFile, privateKeyPEM); err != nil {
 			return nil, err

@@ -3,6 +3,7 @@ package logger
 import (
 	"encoding/json"
 	"fmt"
+	"gossh/internal/resource"
 	"log"
 	"os"
 	"time"
@@ -75,7 +76,7 @@ func writeLog(logData map[string]interface{}) {
 		log.Printf("Failed to open log file: %v", err)
 		return
 	}
-	defer f.Close()
+	defer resource.CloseFile(f)
 
 	f.Write(jsonData)
 	f.Write([]byte("\n"))
