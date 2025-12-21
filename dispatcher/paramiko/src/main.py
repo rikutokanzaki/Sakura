@@ -31,6 +31,9 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.cowrie_launched = False
     self.heralding_connector = connect_server.SSHConnector(host="heralding")
     self.cowrie_connector = connect_server.SSHConnector(host="cowrie", port=2222)
+    self.is_exec_request = False
+    self.request_type = None
+    self.exec_command = None
 
   def check_auth_password(self, username: str, password: str) -> int:
     self.username = username
@@ -58,10 +61,70 @@ class SSHProxyServer(paramiko.ServerInterface):
     return True
 
   def check_channel_shell_request(self, channel) -> bool:
+    self.request_type = "shell"
+    self.event.set()
     return True
 
   def check_channel_exec_request(self, channel, command) -> bool:
+    self.is_exec_request = True
+    self.request_type = "exec"
+    self.exec_command = command
+    self.event.set()
+    threading.Thread(
+      target=self._handle_exec_request,
+      args=(channel, command),
+      daemon=True
+    ).start()
     return True
+
+  def _handle_exec_request(self, channel, command):
+    try:
+      command_str = command.decode('utf-8', errors='ignore')
+
+      try:
+        src_ip, src_port = channel.getpeername()
+      except Exception:
+        src_ip, src_port = "unknown", 0
+
+      log_event.log_command_event(src_ip, src_port, self.username, command_str, "~")
+
+      if not self.cowrie_launched:
+        try:
+          res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
+          if res.status_code == 200:
+            logger.info("Cowrie started for exec request")
+            self.cowrie_launched = True
+          else:
+            logger.error("Failed to start cowrie at exec request (HTTP %s)", res.status_code)
+            channel.send(b"Service unavailable.\n")
+            channel.send_exit_status(1)
+            resource_manager.close_channel(channel)
+            return
+        except Exception:
+          logger.exception("Error triggering cowrie at exec request")
+          channel.send(b"Service unavailable.\n")
+          channel.send_exit_status(1)
+          resource_manager.close_channel(channel)
+          return
+
+      try:
+        output = self.cowrie_connector.execute_command_via_shell(
+          command_str,
+          self.username,
+          self.password
+        )
+        channel.send(output.encode('utf-8'))
+        channel.send_exit_status(0)
+      except Exception:
+        logger.exception("Failed to execute command on cowrie")
+        channel.send(b"Command execution failed.\n")
+        channel.send_exit_status(1)
+
+    except Exception:
+      logger.exception("Error in _handle_exec_request")
+      channel.send_exit_status(1)
+    finally:
+      resource_manager.close_channel(channel)
 
   def _trigger_cowrie(self):
     try:
@@ -100,6 +163,15 @@ def _handle_client(client, addr):
     chan = transport.accept(20)
     if chan is None:
       logger.warning("No channel")
+      return
+
+    try:
+      server.event.wait(timeout=1.0)
+    except Exception:
+      pass
+
+    if server.is_exec_request:
+      session_started = True
       return
 
     username = server.username
