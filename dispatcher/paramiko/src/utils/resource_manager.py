@@ -7,6 +7,19 @@ def close_channel(channel):
     return
 
   try:
+    if not channel.closed:
+      try:
+        channel.send_exit_status(0)
+      except Exception:
+        pass
+
+      transport = channel.get_transport()
+      if transport is not None:
+        try:
+          transport._channels.pop(channel.get_id(), None)
+        except Exception:
+          pass
+
     channel.close()
   except Exception:
     logger.exception("Failed to close channel")

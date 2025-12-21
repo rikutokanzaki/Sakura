@@ -41,7 +41,7 @@ def _build_dir_cmd(cwd: str) -> str:
     return ""
   return f"cd {cwd}"
 
-def handle_session(chan, username: str, password: str, addr: tuple, start_time: float, cowrie_launched: bool, cowrie_connector: connect_server.SSHConnector) -> None:
+def handle_session(chan, username: str, password: str, addr: tuple, start_time: float, cowrie_launched: bool, cowrie_connector: connect_server.SSHConnector, transport=None, client_socket=None) -> None:
   history = []
   dir_cmd = ""
 
@@ -53,6 +53,7 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
   reader = line_reader.LineReader(chan, username, password, prompt, history, cowrie_connector)
 
   motd_lines = set_motd.get_motd_lines(hostname)
+  chan.send(b"\r\n")
   for line in motd_lines:
     sent_line = line.rstrip() + "\r\n"
     chan.send(sent_line.encode("utf-8"))
@@ -156,3 +157,15 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
       logger.exception("Failed to cleanup terminal")
 
     resource_manager.close_channel(chan)
+
+    if transport is not None:
+      try:
+        resource_manager.close_transport(transport)
+      except Exception:
+        logger.exception("Failed to close transport in session cleanup")
+
+    if client_socket is not None:
+      try:
+        resource_manager.close_socket(client_socket)
+      except Exception:
+        logger.exception("Failed to close client socket in session cleanup")
