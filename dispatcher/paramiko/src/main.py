@@ -20,6 +20,7 @@ HOST = "0.0.0.0"
 PORT = 22
 
 HOST_KEY = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
+COWRIE_VERSION = None
 
 class SSHProxyServer(paramiko.ServerInterface):
   def __init__(self, client_addr):
@@ -145,7 +146,13 @@ def _handle_client(client, addr):
     logger.info("Connection from %s", addr)
 
     transport = paramiko.Transport(client)
+
     transport.add_server_key(HOST_KEY)
+
+    if COWRIE_VERSION:
+      transport.local_version = COWRIE_VERSION
+      logger.debug("Set server version to: %s", COWRIE_VERSION)
+
     server = SSHProxyServer(addr)
 
     try:
@@ -201,6 +208,11 @@ def _handle_client(client, addr):
       resource_manager.close_proxy_connection(transport=transport, client=client)
 
 def start_proxy():
+  global COWRIE_VERSION
+
+  COWRIE_VERSION = connect_server.fetch_server_version("cowrie", 2222)
+  logger.info("Using SSH version string: %s", COWRIE_VERSION)
+
   sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
   sock.bind((HOST, PORT))

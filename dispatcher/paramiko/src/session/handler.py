@@ -53,6 +53,7 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
   reader = line_reader.LineReader(chan, username, password, prompt, history, cowrie_connector)
 
   motd_lines = set_motd.get_motd_lines(hostname)
+  chan.send(b"\r\n")
   for line in motd_lines:
     sent_line = line.rstrip() + "\r\n"
     chan.send(sent_line.encode("utf-8"))
