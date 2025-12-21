@@ -2,7 +2,6 @@ from utils import ansi_sequences, resource_manager
 import logging
 import socket as sock_module
 import paramiko
-import gc
 import re
 import time
 
@@ -56,16 +55,6 @@ class SSHConnector:
       transport = paramiko.Transport(sock)
       transport.start_client()
 
-      gc.collect()
-      transports_before_auth = set()
-
-      for obj in gc.get_objects():
-        try:
-          if isinstance(obj, paramiko.Transport):
-            transports_before_auth.add(id(obj))
-        except Exception:
-          pass
-
       try:
         transport.auth_password(username, password)
         logger.info("Heralding auth succeeded (unexpected)")
@@ -73,24 +62,6 @@ class SSHConnector:
         logger.debug("Heralding auth failed (expected)")
       except Exception:
         logger.exception("Auth error")
-
-      gc.collect()
-      leaked_transports = []
-
-      for obj in gc.get_objects():
-        try:
-          if isinstance(obj, paramiko.Transport):
-            obj_id = id(obj)
-            if obj_id not in transports_before_auth and obj_id != id(transport):
-              leaked_transports.append(obj)
-        except Exception:
-          pass
-
-      for leaked_transport in leaked_transports:
-        try:
-          leaked_transport.close()
-        except Exception:
-          logger.exception("Failed to close leaked transport")
 
     except Exception:
       logger.exception("Login recording error")
