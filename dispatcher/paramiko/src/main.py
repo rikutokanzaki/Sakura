@@ -48,9 +48,6 @@ class SSHProxyServer(paramiko.ServerInterface):
     auth_success = self.authenticator.authenticate(username, password)
     log_event.log_auth_event(self.client_addr, HOST, PORT, username, password, auth_success)
 
-    if auth_success:
-      threading.Thread(target=self._trigger_cowrie, daemon=True).start()
-
     return paramiko.AUTH_SUCCESSFUL if auth_success else paramiko.AUTH_FAILED
 
   def check_channel_request(self, kind: str, chanid: int) -> int:
