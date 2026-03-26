@@ -41,7 +41,7 @@ def _build_dir_cmd(cwd: str) -> str:
     return ""
   return f"cd {cwd}"
 
-def handle_session(chan, username: str, password: str, addr: tuple, start_time: float, cowrie_launched: bool, cowrie_connector: connect_server.SSHConnector, transport=None, client_socket=None) -> None:
+def handle_session(chan, username: str, password: str, addr: tuple, start_time: float, cowrie_launched: bool, cowrie_connector: connect_server.SSHConnector, mode: str, transport=None, client_socket=None) -> None:
   history = []
   dir_cmd = ""
 
@@ -59,7 +59,10 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
     chan.send(sent_line.encode("utf-8"))
     time.sleep(0.005)
 
-  if cowrie_launched:
+  if mode == "yozakura" or mode == "tsubomi":
+    cowrie_launched = True
+    update_session(force=True)
+  elif cowrie_launched:
     update_session(force=True)
 
   try:
@@ -74,44 +77,49 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
       except Exception:
         src_ip, src_port = "unknown", 0
 
-      log_event.log_command_event(src_ip, src_port, username, cmd, cwd)
+      log_event.log_command_event(src_ip, src_port, username, cmd, cwd, mode)
 
       if cmd.lower() in ["exit", "quit", "exit;", "quit;"]:
         break
 
       if not cowrie_launched:
-        history.append(cmd)
+        if mode == "sakura":
+          history.append(cmd)
 
-        try:
-          res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
-          if res.status_code == 200:
-            logger.info("Cowrie started. Transferring session...")
-          else:
-            logger.error("Failed to start Cowrie (HTTP %s)", res.status_code)
+          try:
+            res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
+            if res.status_code == 200:
+              logger.info("Cowrie started. Transferring session... (sakura mode)")
+            else:
+              logger.error("Failed to start Cowrie (HTTP %s)", res.status_code)
+              chan.send(b"Service unavailable. Session terminated.\r\n")
+              break
+          except Exception:
+            logger.exception("Error triggering Cowrie")
             chan.send(b"Service unavailable. Session terminated.\r\n")
             break
-        except Exception:
-          logger.exception("Error triggering Cowrie")
-          chan.send(b"Service unavailable. Session terminated.\r\n")
+
+          cowrie_launched = True
+
+          try:
+            output, cwd = cowrie_connector.replay_history(username, password, history)
+          except Exception:
+            logger.exception("Cowrie connection failed during replay_history")
+            chan.send(b"Connection to backend lost. Session terminated.\r\n")
+            break
+
+          dir_cmd = _build_dir_cmd(cwd)
+          prompt = prompt_manager.get_prompt(username, hostname, cwd)
+          reader.update_prompt(prompt)
+
+          clean_output = ansi_sequences.strip_ansi_sequences(output)
+          chan.send(clean_output.encode("utf-8"))
+          update_session(force=True)
+          continue
+        else:
+          logger.warning("Unexpected state: cowrie not launched in mode %s", mode)
+          chan.send(b"Service error. Session terminated.\r\n")
           break
-
-        cowrie_launched = True
-
-        try:
-          output, cwd = cowrie_connector.replay_history(username, password, history)
-        except Exception:
-          logger.exception("Cowrie connection failed during replay_history")
-          chan.send(b"Connection to backend lost. Session terminated.\r\n")
-          break
-
-        dir_cmd = _build_dir_cmd(cwd)
-        prompt = prompt_manager.get_prompt(username, hostname, cwd)
-        reader.update_prompt(prompt)
-
-        clean_output = ansi_sequences.strip_ansi_sequences(output)
-        chan.send(clean_output.encode("utf-8"))
-        update_session(force=True)
-        continue
 
       dir_cmd = _build_dir_cmd(cwd)
 
@@ -148,7 +156,8 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
       src_port=src_port,
       username=username,
       duration=duration,
-      message="Session closed"
+      message="Session closed",
+      mode=mode
     )
 
     try:

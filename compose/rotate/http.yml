@@ -4,7 +4,7 @@ services:
   ####################################
   openresty:
     container_name: openresty
-    build: ../dispatcher/openresty
+    build: ../../dispatcher/openresty
     depends_on:
       - launcher
       - heralding
@@ -14,24 +14,9 @@ services:
       - "80:80"
       - "5000:5000"
     env_file:
-      - ../.env
+      - ../../.env
     volumes:
       - ${SAKURA_DATA_PATH}/openresty:/var/log/nginx
-    restart: always
-
-  paramiko:
-    container_name: paramiko
-    build: ../dispatcher/paramiko
-    depends_on:
-      - launcher
-      - heralding
-      - cowrie
-    ports:
-      - "22:22"
-    env_file:
-      - ../.env
-    volumes:
-      - ${SAKURA_DATA_PATH}/paramiko:/var/log/paramiko
     restart: always
 
   ####################################
@@ -39,9 +24,13 @@ services:
   ####################################
   launcher:
     container_name: launcher
-    build: ../launcher
+    build: ../../launcher
+    depends_on:
+      - heralding
+      - h0neytr4p
+      - wordpot
     env_file:
-      - ../.env
+      - ../../.env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${SAKURA_DATA_PATH}:/data
@@ -85,18 +74,6 @@ services:
     volumes:
       - ${SAKURA_DATA_PATH}/h0neytr4p/log/:/opt/h0neytr4p/log/
       - ${SAKURA_DATA_PATH}/h0neytr4p/payloads/:/data/h0neytr4p/payloads/
-    restart: always
-
-  ### SSH ###
-  cowrie:
-    container_name: cowrie
-    image: cowrie/cowrie
-    volumes:
-      - ../layers/core/config/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt
-      - ${SAKURA_DATA_PATH}/cowrie:/cowrie/cowrie-git/var/log/cowrie
-    environment:
-      - PYTHONUNBUFFERED=1
-      - COWRIE_TTYLOG_ENABLED=yes
     restart: always
 
   ####################################
@@ -254,7 +231,7 @@ services:
     user: root
     volumes:
       - certs:/usr/share/metricbeat/certs
-      - ../elk/metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - ../../elk/metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
       - /proc:/hostfs/proc:ro
@@ -282,8 +259,8 @@ services:
     user: root
     volumes:
       - certs:/usr/share/logstash/certs
-      - ../elk/logstash/logstash_ingest_data/:/usr/share/logstash/ingest_data/
-      - ../elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ../../elk/logstash/logstash_ingest_data/:/usr/share/logstash/ingest_data/
+      - ../../elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
       - ${SAKURA_DATA_PATH}:/data
     ports:
       - "64305:9600"

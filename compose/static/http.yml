@@ -2,32 +2,20 @@ services:
   ####################################
   ### Dispatcher
   ####################################
-  paramiko:
-    container_name: paramiko
-    build: ../dispatcher/paramiko
+  openresty:
+    container_name: openresty
+    build: ../../dispatcher/openresty
     depends_on:
-      - launcher
       - heralding
-      - cowrie
+      - h0neytr4p
+      - wordpot
     ports:
-      - "22:22"
+      - "80:80"
+      - "5000:5000"
     env_file:
-      - ../.env
+      - ../../.env
     volumes:
-      - ${SAKURA_DATA_PATH}/paramiko:/var/log/paramiko
-    restart: always
-
-  ####################################
-  ### Launcher
-  ####################################
-  launcher:
-    container_name: launcher
-    build: ../launcher
-    env_file:
-      - ../.env
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${SAKURA_DATA_PATH}:/data
+      - ${SAKURA_DATA_PATH}/openresty:/var/log/nginx
     restart: always
 
   ####################################
@@ -53,16 +41,21 @@ services:
   ## Passive
   ##############
 
-  ### SSH ###
-  cowrie:
-    container_name: cowrie
-    image: cowrie/cowrie
+  ### HTTP ###
+  wordpot:
+    container_name: wordpot
+    image: ghcr.io/telekom-security/wordpot:24.04.1
     volumes:
-      - ../layers/core/config/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt
-      - ${SAKURA_DATA_PATH}/cowrie:/cowrie/cowrie-git/var/log/cowrie
-    environment:
-      - PYTHONUNBUFFERED=1
-      - COWRIE_TTYLOG_ENABLED=yes
+      - ${SAKURA_DATA_PATH}/wordpot/log/:/opt/wordpot/logs/
+    user: "0"
+    restart: always
+
+  h0neytr4p:
+    container_name: h0neytr4p
+    image: ghcr.io/telekom-security/h0neytr4p:24.04.1
+    volumes:
+      - ${SAKURA_DATA_PATH}/h0neytr4p/log/:/opt/h0neytr4p/log/
+      - ${SAKURA_DATA_PATH}/h0neytr4p/payloads/:/data/h0neytr4p/payloads/
     restart: always
 
   ####################################
@@ -220,7 +213,7 @@ services:
     user: root
     volumes:
       - certs:/usr/share/metricbeat/certs
-      - ../elk/metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - ../../elk/metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
       - /proc:/hostfs/proc:ro
@@ -248,8 +241,8 @@ services:
     user: root
     volumes:
       - certs:/usr/share/logstash/certs
-      - ../elk/logstash/logstash_ingest_data/:/usr/share/logstash/ingest_data/
-      - ../elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ../../elk/logstash/logstash_ingest_data/:/usr/share/logstash/ingest_data/
+      - ../../elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
       - ${SAKURA_DATA_PATH}:/data
     ports:
       - "64305:9600"
