@@ -27,6 +27,11 @@ if [ -z "$KIBANA_PASSWORD" ]; then
   exit 1
 fi
 
+if [ -z "$SAKURA_DATA_PATH" ]; then
+  echo "Error: SAKURA_DATA_PATH is not set."
+  exit 1
+fi
+
 COMPOSE_DIR=./compose
 
 select_option() {
@@ -190,6 +195,16 @@ set -a
 source ./.env
 set +a
 
+SELECTED_COMPOSE_DIR=$(dirname "$(realpath -m "$SELECTED_COMPOSE_FILE")")
+
+if [[ "$SAKURA_DATA_PATH" = /* ]]; then
+  HOST_DATA_PATH="$SAKURA_DATA_PATH"
+else
+  HOST_DATA_PATH="$(realpath -m "$SELECTED_COMPOSE_DIR/$SAKURA_DATA_PATH")"
+fi
+
+echo "Resolved host data path: $HOST_DATA_PATH"
+
 if [ ! -f "$SELECTED_COMPOSE_FILE" ]; then
   echo "Compose file not found: $SELECTED_COMPOSE_FILE"
   exit 1
@@ -203,19 +218,15 @@ echo "$SAKURAINSTALLER"
 echo
 echo
 
-sudo mkdir -p -m 777 ./data/cowrie
-sudo chown root:root ./data/cowrie
-sudo mkdir -p -m 755 ./data/wordpot/log
-sudo chown 2000:2000 ./data/wordpot/log
-sudo mkdir -p -m 755 ./data/h0neytr4p/log
-sudo chown 2000:2000 ./data/h0neytr4p/log
-sudo mkdir -p -m 755 ./data/h0neytr4p/payloads
-sudo chown 2000:2000 ./data/h0neytr4p/payloads
-sudo mkdir -p -m 755 ./data/heralding
-sudo chown 2000:2000 ./data/heralding
-sudo chown -R 2000:2000 ./data/heralding
-sudo find ./data/heralding -type d -exec chmod 755 {} \;
-sudo find ./data/heralding -type f -exec chmod 644 {} \;
+sudo mkdir -p -m 777 "$HOST_DATA_PATH/cowrie"
+sudo chown root:root "$HOST_DATA_PATH/cowrie"
+sudo mkdir -p -m 755 "$HOST_DATA_PATH/wordpot/log"
+sudo chown 2000:2000 "$HOST_DATA_PATH/wordpot/log"
+sudo mkdir -p -m 755 "$HOST_DATA_PATH/h0neytr4p/log"
+sudo chown 2000:2000 "$HOST_DATA_PATH/h0neytr4p/log"
+sudo mkdir -p -m 755 "$HOST_DATA_PATH/h0neytr4p/payloads"
+sudo chown 2000:2000 "$HOST_DATA_PATH/h0neytr4p/payloads"
+sudo mkdir -p -m 755 "$HOST_DATA_PATH/heralding"
 sudo chmod 444 ./elk/metricbeat/metricbeat.yml
 sudo chown root:root ./elk/metricbeat/metricbeat.yml
 

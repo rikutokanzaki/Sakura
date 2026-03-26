@@ -44,6 +44,7 @@ services:
   heralding:
     container_name: heralding
     image: ghcr.io/telekom-security/heralding:24.04.1
+    user: "0:0"
     volumes:
       - ${SAKURA_DATA_PATH}/heralding:/var/log/heralding
     tmpfs:
