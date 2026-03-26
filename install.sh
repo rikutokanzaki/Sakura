@@ -219,7 +219,6 @@ echo
 echo
 
 sudo mkdir -p -m 777 "$HOST_DATA_PATH/cowrie"
-sudo chown root:root "$HOST_DATA_PATH/cowrie"
 sudo mkdir -p -m 755 "$HOST_DATA_PATH/wordpot/log"
 sudo chown 2000:2000 "$HOST_DATA_PATH/wordpot/log"
 sudo mkdir -p -m 755 "$HOST_DATA_PATH/h0neytr4p/log"
