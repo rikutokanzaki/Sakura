@@ -58,6 +58,7 @@ services:
   cowrie:
     container_name: cowrie
     image: cowrie/cowrie
+    user: "0:0"
     volumes:
       - ../../layers/core/config/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt
       - ${SAKURA_DATA_PATH}/cowrie:/cowrie/cowrie-git/var/log/cowrie
