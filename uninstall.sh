@@ -14,15 +14,122 @@ set +a
 
 COMPOSE_DIR=./compose
 
-COMPOSE_FILE_STANDARD=${COMPOSE_DIR}/standard.yml
-COMPOSE_FILE_SSH=${COMPOSE_DIR}/ssh.yml
-COMPOSE_FILE_HTTP=${COMPOSE_DIR}/http.yml
+select_option() {
+  local prompt="$1"
+  local default_index="$2"
+  shift 2
+  local options=("$@")
+  local input idx
+
+  echo "$prompt (Enter=$default_index)" >&2
+  for i in "${!options[@]}"; do
+    printf "  %2d) %s\n" "$((i+1))" "${options[$i]}" >&2
+  done
+
+  read -p "Selection (number or name): " input
+  [ -z "$input" ] && input="$default_index"
+
+  if [[ "$input" =~ ^[0-9]+$ ]]; then
+    idx=$((input-1))
+    if [ "$idx" -lt 0 ] || [ "$idx" -ge "${#options[@]}" ]; then
+      echo ""
+      return 1
+    fi
+    echo "${options[$idx]}"
+    return 0
+  fi
+
+  for opt in "${options[@]}"; do
+    if [ "$opt" = "$input" ]; then
+      echo "$opt"
+      return 0
+    fi
+  done
+
+  echo ""
+  return 1
+}
+
+MODE_OPTIONS=("dynamic" "static" "standalone" "rotate")
+SELECTED_MODE=$(select_option "Select deployment mode to remove" 1 "${MODE_OPTIONS[@]}")
+if [ $? -ne 0 ] || [ -z "$SELECTED_MODE" ]; then
+  echo "Error: invalid mode selection"
+  exit 1
+fi
+
+PROFILE_OPTIONS=()
+case "$SELECTED_MODE" in
+  dynamic|static|rotate)
+    PROFILE_OPTIONS=("standard" "http" "ssh")
+    ;;
+  standalone)
+    PROFILE_OPTIONS=("cowrie" "heralding" "h0neytr4p")
+    ;;
+  *)
+    echo "Error: unsupported mode: $SELECTED_MODE"
+    exit 1
+    ;;
+esac
+
+SELECTED_PROFILE=$(select_option "Select startup profile to remove" 1 "${PROFILE_OPTIONS[@]}")
+if [ $? -ne 0 ] || [ -z "$SELECTED_PROFILE" ]; then
+  echo "Error: invalid profile selection"
+  exit 1
+fi
+
+case "$SELECTED_MODE:$SELECTED_PROFILE" in
+  dynamic:standard)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/dynamic/standard.yml"
+    ;;
+  dynamic:http)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/dynamic/http.yml"
+    ;;
+  dynamic:ssh)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/dynamic/ssh.yml"
+    ;;
+  static:standard)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/static/standard.yml"
+    ;;
+  static:http)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/static/http.yml"
+    ;;
+  static:ssh)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/static/ssh.yml"
+    ;;
+  standalone:cowrie)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/standalone/cowrie.yml"
+    ;;
+  standalone:heralding)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/standalone/heralding.yml"
+    ;;
+  standalone:h0neytr4p)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/standalone/h0neytr4p.yml"
+    ;;
+  rotate:standard)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/rotate/standard.yml"
+    ;;
+  rotate:http)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/rotate/http.yml"
+    ;;
+  rotate:ssh)
+    SELECTED_COMPOSE_FILE="$COMPOSE_DIR/rotate/ssh.yml"
+    ;;
+  *)
+    echo "Error: unsupported selection: $SELECTED_MODE/$SELECTED_PROFILE"
+    exit 1
+    ;;
+esac
+
+if [ ! -f "$SELECTED_COMPOSE_FILE" ]; then
+  echo "Compose file not found: $SELECTED_COMPOSE_FILE"
+  exit 1
+fi
 
 echo
 echo "Deleting services with Docker Compose..."
 echo
 
-if ! docker compose -f "$COMPOSE_FILE_STANDARD" down --rmi all --volumes --remove-orphans; then
+if ! docker compose -f "$SELECTED_COMPOSE_FILE" down --rmi all --volumes --remove-orphans; then
   echo "Error: docker compose down failed."
   exit 1
 fi
@@ -54,7 +161,7 @@ if [ -d "./data" ]; then
   if ! mkdir -p "$TARGET_DIR"; then
     echo "Error: cannot create '$TARGET_DIR' (check ARCHIVE_DATA_PATH and permissions)." >&2
   else
-    echo "Copying ./data → ${TARGET_DIR}/data"
+    echo "Copying ./data -> ${TARGET_DIR}/data"
     if cp -a ./data "${TARGET_DIR}/data"; then
       echo "Captured malicious activity data copied successfully."
       echo

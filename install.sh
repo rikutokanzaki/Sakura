@@ -213,6 +213,9 @@ sudo mkdir -p -m 755 ./data/h0neytr4p/payloads
 sudo chown 2000:2000 ./data/h0neytr4p/payloads
 sudo mkdir -p -m 755 ./data/heralding
 sudo chown 2000:2000 ./data/heralding
+sudo chown -R 2000:2000 ./data/heralding
+sudo find ./data/heralding -type d -exec chmod 755 {} \;
+sudo find ./data/heralding -type f -exec chmod 644 {} \;
 sudo chmod 444 ./elk/metricbeat/metricbeat.yml
 sudo chown root:root ./elk/metricbeat/metricbeat.yml
 
