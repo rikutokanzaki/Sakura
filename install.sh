@@ -229,7 +229,18 @@ sudo mkdir -p -m 755 "$HOST_DATA_PATH/heralding"
 sudo chmod 444 ./elk/metricbeat/metricbeat.yml
 sudo chown root:root ./elk/metricbeat/metricbeat.yml
 
-STOP_CANDIDATES=("cowrie" "h0neytr4p" "wordpot")
+STOP_CANDIDATES=()
+case "$SELECTED_MODE" in
+  dynamic|rotate)
+    STOP_CANDIDATES=("cowrie" "h0neytr4p" "wordpot")
+    ;;
+  static|standalone)
+    STOP_CANDIDATES=()
+    ;;
+  *)
+    STOP_CANDIDATES=()
+    ;;
+esac
 
 echo "Starting services with Docker Compose..."
 if ! docker compose -f "$SELECTED_COMPOSE_FILE" up -d; then
