@@ -97,7 +97,9 @@ class SSHProxyServer(paramiko.ServerInterface):
 
       log_event.log_command_event(src_ip, src_port, self.username, command_str, "~", self.mode)
 
-      if not self.cowrie_launched:
+      if self.mode in ("static", "standalone"):
+        self.cowrie_launched = True
+      elif not self.cowrie_launched:
         try:
           res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
           if res.status_code == 200:
