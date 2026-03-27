@@ -5,8 +5,8 @@ services:
   paramiko:
     container_name: paramiko
     build:
-      context: ../../dispatcher/paramiko
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: dispatcher/paramiko/Dockerfile
     depends_on:
       - heralding
       - cowrie

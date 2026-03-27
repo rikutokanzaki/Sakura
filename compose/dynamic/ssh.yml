@@ -5,8 +5,8 @@ services:
   paramiko:
     container_name: paramiko
     build:
-      context: ../../dispatcher/paramiko
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: dispatcher/paramiko/Dockerfile
     depends_on:
       - launcher
       - heralding
@@ -25,8 +25,8 @@ services:
   launcher:
     container_name: launcher
     build:
-      context: ../../launcher
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: launcher/Dockerfile
     env_file:
       - ../../.env
     volumes:

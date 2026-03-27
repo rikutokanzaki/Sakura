@@ -7,9 +7,9 @@ RUN apt-get update && \
 RUN mkdir -p /certs && \
   ssh-keygen -t rsa -b 2048 -f /certs/ssh_host_rsa_key -N ""
 
-COPY . .
+WORKDIR /app
 
-WORKDIR /
+COPY dispatcher/paramiko/ /app/
 
 RUN pip install -r requirements.txt
 ENV PYTHONUNBUFFERED=1

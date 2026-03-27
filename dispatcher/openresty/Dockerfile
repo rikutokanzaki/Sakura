@@ -12,8 +12,8 @@ RUN apt-get update && \
   apt-get autoremove -y && \
   rm -rf /var/lib/apt/lists/*
 
-COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
-COPY conf.d/ /etc/nginx/conf.d/
-COPY lua/ /etc/nginx/lua/
+COPY dispatcher/openresty/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
+COPY dispatcher/openresty/conf.d/ /etc/nginx/conf.d/
+COPY dispatcher/openresty/lua/ /etc/nginx/lua/
 
 CMD ["openresty", "-g", "daemon off;"]
