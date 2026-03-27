@@ -4,7 +4,9 @@ services:
   ####################################
   openresty:
     container_name: openresty
-    build: ../../dispatcher/openresty
+    build:
+      context: ../../dispatcher/openresty
+      dockerfile: Dockerfile
     depends_on:
       - launcher
       - heralding
@@ -24,7 +26,9 @@ services:
   ####################################
   launcher:
     container_name: launcher
-    build: ../../launcher
+    build:
+      context: ../../launcher
+      dockerfile: Dockerfile
     env_file:
       - ../../.env
     volumes:

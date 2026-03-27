@@ -4,7 +4,9 @@ services:
   ####################################
   paramiko:
     container_name: paramiko
-    build: ../../dispatcher/paramiko
+    build:
+      context: ../../dispatcher/paramiko
+      dockerfile: Dockerfile
     depends_on:
       - heralding
       - cowrie

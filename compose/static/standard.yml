@@ -4,7 +4,9 @@ services:
   ####################################
   openresty:
     container_name: openresty
-    build: ../../dispatcher/openresty
+    build:
+      context: ../../dispatcher/openresty
+      dockerfile: Dockerfile
     depends_on:
       - heralding
       - h0neytr4p
@@ -20,7 +22,9 @@ services:
 
   paramiko:
     container_name: paramiko
-    build: ../../dispatcher/paramiko
+    build:
+      context: ../../dispatcher/paramiko
+      dockerfile: Dockerfile
     depends_on:
       - heralding
       - cowrie
