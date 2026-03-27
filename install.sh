@@ -190,6 +190,8 @@ fi
 
 upsert_env_var "DISPATCHER_MODE" "$SELECTED_MODE"
 upsert_env_var "DISPATCHER_HTTP_TARGET" "$DISPATCHER_HTTP_TARGET"
+upsert_env_var "SELECTED_COMPOSE_FILE" "$SELECTED_COMPOSE_FILE"
+upsert_env_var "SELECTED_PROFILE" "$SELECTED_PROFILE"
 
 set -a
 source ./.env

@@ -14,6 +14,21 @@ set +a
 
 COMPOSE_DIR=./compose
 
+PREV_SELECTED_MODE="${SELECTED_MODE:-}"
+PREV_SELECTED_PROFILE="${SELECTED_PROFILE:-}"
+
+if [ -z "$PREV_SELECTED_MODE" ]; then
+  DEFAULT_MODE_INDEX=1
+else
+  case "$PREV_SELECTED_MODE" in
+    dynamic) DEFAULT_MODE_INDEX=1 ;;
+    static) DEFAULT_MODE_INDEX=2 ;;
+    standalone) DEFAULT_MODE_INDEX=3 ;;
+    rotate) DEFAULT_MODE_INDEX=4 ;;
+    *) DEFAULT_MODE_INDEX=1 ;;
+  esac
+fi
+
 select_option() {
   local prompt="$1"
   local default_index="$2"
@@ -51,7 +66,8 @@ select_option() {
 }
 
 MODE_OPTIONS=("dynamic" "static" "standalone" "rotate")
-SELECTED_MODE=$(select_option "Select deployment mode to remove" 1 "${MODE_OPTIONS[@]}")
+echo "Previous profile: ${PREV_SELECTED_MODE:-not set}" >&2
+SELECTED_MODE=$(select_option "Select deployment mode to remove" "$DEFAULT_MODE_INDEX" "${MODE_OPTIONS[@]}")
 if [ $? -ne 0 ] || [ -z "$SELECTED_MODE" ]; then
   echo "Error: invalid mode selection"
   exit 1
@@ -71,7 +87,22 @@ case "$SELECTED_MODE" in
     ;;
 esac
 
-SELECTED_PROFILE=$(select_option "Select startup profile to remove" 1 "${PROFILE_OPTIONS[@]}")
+if [ -z "$PREV_SELECTED_PROFILE" ] || [ "$SELECTED_MODE" != "$PREV_SELECTED_MODE" ]; then
+  DEFAULT_PROFILE_INDEX=1
+else
+  case "$PREV_SELECTED_PROFILE" in
+    standard) DEFAULT_PROFILE_INDEX=1 ;;
+    http) DEFAULT_PROFILE_INDEX=2 ;;
+    ssh) DEFAULT_PROFILE_INDEX=3 ;;
+    cowrie) DEFAULT_PROFILE_INDEX=1 ;;
+    heralding) DEFAULT_PROFILE_INDEX=2 ;;
+    h0neytr4p) DEFAULT_PROFILE_INDEX=3 ;;
+    *) DEFAULT_PROFILE_INDEX=1 ;;
+  esac
+fi
+
+echo "Previous profile: ${PREV_SELECTED_PROFILE:-not set}" >&2
+SELECTED_PROFILE=$(select_option "Select startup profile to remove" "$DEFAULT_PROFILE_INDEX" "${PROFILE_OPTIONS[@]}")
 if [ $? -ne 0 ] || [ -z "$SELECTED_PROFILE" ]; then
   echo "Error: invalid profile selection"
   exit 1
