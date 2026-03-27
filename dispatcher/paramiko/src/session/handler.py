@@ -59,7 +59,7 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
     chan.send(sent_line.encode("utf-8"))
     time.sleep(0.005)
 
-  if mode == "yozakura" or mode == "tsubomi":
+  if mode == "static" or mode == "standalone":
     cowrie_launched = True
     update_session(force=True)
   elif cowrie_launched:
@@ -83,13 +83,13 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
         break
 
       if not cowrie_launched:
-        if mode == "sakura":
+        if mode == "dynamic" or mode == "rotate":
           history.append(cmd)
 
           try:
             res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
             if res.status_code == 200:
-              logger.info("Cowrie started. Transferring session... (sakura mode)")
+              logger.info("Cowrie started. Transferring session... (mode=%s)", mode)
             else:
               logger.error("Failed to start Cowrie (HTTP %s)", res.status_code)
               chan.send(b"Service unavailable. Session terminated.\r\n")
