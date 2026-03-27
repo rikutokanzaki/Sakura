@@ -84,8 +84,6 @@ def handle_session(chan, username: str, password: str, addr: tuple, start_time: 
 
       if not cowrie_launched:
         if mode == "dynamic" or mode == "rotate":
-          history.append(cmd)
-
           try:
             res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
             if res.status_code == 200:
