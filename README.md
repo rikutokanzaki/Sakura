@@ -181,6 +181,12 @@ ALLOWED_NETWORKS=
 
 HOST_NAME=svr04
 
+ROTATE_INTERVAL=1020
+SESSION_TIMEOUT=300
+
+DISPATCHER_MODE=dynamic
+DISPATCHER_HTTP_TARGET=auto
+
 ####################################
 ### Elastic Stack
 ####################################
@@ -292,11 +298,14 @@ ${ARCHIVE_DATA_PATH}/Sakura/${INSTALL_DATE}-${TODAY}-${TIME}/data/
 
 ### セッションタイムアウト時間の変更
 
-[launcher/app/controllers/session_manager.py](launcher/app/controllers/session_manager.py)
+[.env](.env) または [compose/.env](compose/.env)
 
-```python
-SESSION_TIMEOUT = 300  # 秒
+```bash
+SESSION_TIMEOUT=300
 ```
+
+- `SESSION_TIMEOUT` は秒単位です。
+- `0`・負数・不正値を設定した場合はデフォルト `300` 秒が使用されます。
 
 ### Cowrieユーザーアカウントの追加
 
