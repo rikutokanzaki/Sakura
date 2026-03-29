@@ -28,7 +28,7 @@ end
 
 local function proxy(target)
   local mode = current_mode()
-  ngx.var.spring_mode    = mode
+  ngx.var.dispatcher_mode    = mode
 
   return ngx.exec("@" .. target)
 end
@@ -102,7 +102,7 @@ local function trigger_and_proxy(target)
   ngx.log(ngx.INFO, "[trigger+proxy] ", target)
 
   local mode = current_mode()
-  ngx.var.spring_mode    = mode
+  ngx.var.dispatcher_mode    = mode
 
   with_boot_lock("trg:" .. target, 5, function()
     local client = http.new()
@@ -165,7 +165,7 @@ end
 
 local mode = current_mode()
 
-if mode == "dynamic" or mode == "rotate" then
+if mode == "dynamic" then
   if target == "wordpot" or target == "h0neytr4p" then
     return trigger_and_proxy(target)
   else
