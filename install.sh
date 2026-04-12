@@ -292,7 +292,13 @@ else
   echo "Failed to import Kibana saved objects. HTTP status: $status"
 fi
 
-date +"%Y%m%d" > .install_date
+INSTALL_DATE=$(date +"%Y%m%d")
+cat > .install_info <<EOF
+INSTALL_DATE=${INSTALL_DATE}
+PREV_SELECTED_MODE=${SELECTED_MODE}
+PREV_SELECTED_PROFILE=${SELECTED_PROFILE}
+SELECTED_COMPOSE_FILE=${SELECTED_COMPOSE_FILE}
+EOF
 
 echo
-echo "Installation date recorded."
+echo "Installation metadata recorded (.install_info)."

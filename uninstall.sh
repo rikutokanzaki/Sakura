@@ -14,8 +14,30 @@ set +a
 
 COMPOSE_DIR=./compose
 
-PREV_SELECTED_MODE="${SELECTED_MODE:-}"
-PREV_SELECTED_PROFILE="${SELECTED_PROFILE:-}"
+INSTALL_INFO_FILE=".install_info"
+
+get_install_info_value() {
+  local key="$1"
+  local file="$2"
+
+  if [ ! -f "$file" ]; then
+    echo ""
+    return 0
+  fi
+
+  awk -F'=' -v k="$key" '$1==k {sub(/^[[:space:]]+/, "", $2); print $2; exit}' "$file"
+}
+
+PREV_SELECTED_MODE=$(get_install_info_value "PREV_SELECTED_MODE" "$INSTALL_INFO_FILE")
+PREV_SELECTED_PROFILE=$(get_install_info_value "PREV_SELECTED_PROFILE" "$INSTALL_INFO_FILE")
+
+if [ -z "$PREV_SELECTED_MODE" ]; then
+  PREV_SELECTED_MODE="${SELECTED_MODE:-}"
+fi
+
+if [ -z "$PREV_SELECTED_PROFILE" ]; then
+  PREV_SELECTED_PROFILE="${SELECTED_PROFILE:-}"
+fi
 
 if [ -z "$PREV_SELECTED_MODE" ]; then
   DEFAULT_MODE_INDEX=1
@@ -66,7 +88,7 @@ select_option() {
 }
 
 MODE_OPTIONS=("dynamic" "static" "standalone" "rotate")
-echo "Previous profile: ${PREV_SELECTED_MODE:-not set}" >&2
+echo "Previous mode: ${PREV_SELECTED_MODE:-not set}" >&2
 SELECTED_MODE=$(select_option "Select deployment mode to remove" "$DEFAULT_MODE_INDEX" "${MODE_OPTIONS[@]}")
 if [ $? -ne 0 ] || [ -z "$SELECTED_MODE" ]; then
   echo "Error: invalid mode selection"
@@ -172,13 +194,12 @@ echo
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_NAME="$(basename "$SCRIPT_DIR")"
 
-INSTALL_DATE_FILE=".install_date"
 TODAY=$(date +"%Y%m%d")
 TIMENOW=$(date +"%H%M%S")
 
-if [ -f "$INSTALL_DATE_FILE" ]; then
-  INSTALL_DATE=$(cat "$INSTALL_DATE_FILE")
-else
+INSTALL_DATE=$(get_install_info_value "INSTALL_DATE" "$INSTALL_INFO_FILE")
+
+if [ -z "$INSTALL_DATE" ]; then
   INSTALL_DATE="unknown"
 fi
 
