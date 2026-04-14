@@ -1,6 +1,6 @@
 # Sakura - 動的多層型ハニーポットシステム
 
-Sakuraは、SSH/HTTPプロトコルに対応した多層型インタラクティブハニーポットシステムです。攻撃者の行動を段階的に検知し、脅威レベルに応じて適切なハニーポット層へ自動的に振り分けます。
+Sakuraは、SSH/HTTPプロトコルに対応したハニーポットシステムです。攻撃者の行動を段階的に検知し、脅威レベルに応じて適切なハニーポット層へ自動的に振り分けます。運用モードとして `dynamic` / `static` / `standalone` / `rotate` をサポートし、同一構成で目的に応じた挙動を切り替えられます。
 
 ## 概要
 
@@ -85,6 +85,13 @@ Sakuraは以下の3層構造で構成されています：
 - セッション終了後、5分間（`SESSION_TIMEOUT`）のタイムアウトで自動停止
 - リソース効率化と攻撃者へのリアルな動作遅延を再現
 
+### 運用モード
+
+- `dynamic`: 通常はHeraldingのみ稼働し、攻撃検知時に必要なハニーポットを都度起動
+- `static`: プロファイル内の対象ハニーポットを常時稼働
+- `standalone`: 単体ハニーポット構成（`cowrie` / `heralding` / `h0neytr4p`）
+- `rotate`: `dynamic -> static -> standalone` を `ROTATE_INTERVAL` 秒ごとに自動ローテーション
+
 ## 構成ファイル
 
 ### ディレクトリ構造
@@ -95,9 +102,22 @@ Sakura/
 ├── uninstall.sh             # アンインストール・バックアップスクリプト
 ├── .env                     # 環境変数設定
 ├── compose/                 # Docker Composeプロファイル
-│     ├── standard.yml       # 全機能有効
-│     ├── ssh.yml            # SSHのみ
-│     └── http.yml           # HTTPのみ
+│     ├── dynamic/
+│     │     ├── standard.yml # dynamic: SSH + HTTP
+│     │     ├── ssh.yml      # dynamic: SSHのみ
+│     │     └── http.yml     # dynamic: HTTPのみ
+│     ├── static/
+│     │     ├── standard.yml # static: SSH + HTTP
+│     │     ├── ssh.yml      # static: SSHのみ
+│     │     └── http.yml     # static: HTTPのみ
+│     ├── rotate/
+│     │     ├── standard.yml # rotate: SSH + HTTP
+│     │     ├── ssh.yml      # rotate: SSHのみ
+│     │     └── http.yml     # rotate: HTTPのみ
+│     └── standalone/
+│           ├── cowrie.yml
+│           ├── heralding.yml
+│           └── h0neytr4p.yml
 ├── dispatcher/
 │     ├── paramiko/          # SSHリバースプロキシ
 │     │     ├── Dockerfile
@@ -235,16 +255,23 @@ ENCRYPTION_KEY=
 
 #### 3. **プロファイル選択**
 
-インストールスクリプトが起動時に以下から選択します：
+インストールスクリプト起動時に、まず運用モードを選択し、次に対応するプロファイルを選択します。
 
-- `standard.yml`: SSH + HTTP（推奨）
-- `ssh.yml`: SSH のみ
-- `http.yml`: HTTP のみ
+- 運用モード:
+  - `dynamic`
+  - `static`
+  - `standalone`
+  - `rotate`
+- プロファイル:
+  - `dynamic` / `static` / `rotate` の場合: `standard` / `http` / `ssh`
+  - `standalone` の場合: `cowrie` / `heralding` / `h0neytr4p`
+
+選択結果は `.env` に自動反映され、`DISPATCHER_MODE` / `DISPATCHER_HTTP_TARGET` / `SELECTED_PROFILE` / `SELECTED_COMPOSE_FILE` が更新されます。
 
 #### 4. **動作確認**
 
 ```bash
-docker compose -f compose/standard.yml ps
+docker compose -f compose/dynamic/standard.yml ps
 curl http://localhost:5000  # Launcher UI
 ```
 
@@ -306,6 +333,20 @@ SESSION_TIMEOUT=300
 
 - `SESSION_TIMEOUT` は秒単位です。
 - `0`・負数・不正値を設定した場合はデフォルト `300` 秒が使用されます。
+
+### モード切替設定
+
+[.env](.env) または [compose/.env](compose/.env)
+
+```bash
+DISPATCHER_MODE=dynamic
+ROTATE_INTERVAL=1020
+DISPATCHER_HTTP_TARGET=auto
+```
+
+- `DISPATCHER_MODE`: `dynamic` / `static` / `standalone` / `rotate`
+- `ROTATE_INTERVAL`: `DISPATCHER_MODE=rotate` 時のローテーション間隔（秒）
+- `DISPATCHER_HTTP_TARGET`: `standalone` 時のHTTP転送先（`heralding` / `h0neytr4p` / `auto`）
 
 ### Cowrieユーザーアカウントの追加
 
