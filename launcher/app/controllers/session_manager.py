@@ -1,9 +1,17 @@
 from app.controllers import docker_manager
+import os
 import logging
 import threading
 import time
 
-SESSION_TIMEOUT = 300
+def _read_session_timeout() -> int:
+  try:
+    timeout = int(os.getenv("SESSION_TIMEOUT", "300"))
+    return timeout if timeout > 0 else 300
+  except (TypeError, ValueError):
+    return 300
+
+SESSION_TIMEOUT = _read_session_timeout()
 
 _services = {}
 _services_lock = threading.Lock()
@@ -13,6 +21,7 @@ linked_map = {
 }
 
 logger = logging.getLogger(__name__)
+logger.info("Session timeout configured: %s seconds", SESSION_TIMEOUT)
 
 class ServiceSession:
   def __init__(self, service_name, linked_services=None, persist=False):

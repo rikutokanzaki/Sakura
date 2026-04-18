@@ -4,7 +4,9 @@ services:
   ####################################
   openresty:
     container_name: openresty
-    build: ../dispatcher/openresty
+    build:
+      context: ../..
+      dockerfile: dispatcher/openresty/Dockerfile
     depends_on:
       - launcher
       - heralding
@@ -14,7 +16,7 @@ services:
       - "80:80"
       - "5000:5000"
     env_file:
-      - ../.env
+      - ../../.env
     volumes:
       - ${SAKURA_DATA_PATH}/openresty:/var/log/nginx
     restart: always
@@ -24,9 +26,11 @@ services:
   ####################################
   launcher:
     container_name: launcher
-    build: ../launcher
+    build:
+      context: ../..
+      dockerfile: launcher/Dockerfile
     env_file:
-      - ../.env
+      - ../../.env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${SAKURA_DATA_PATH}:/data
@@ -44,6 +48,7 @@ services:
   heralding:
     container_name: heralding
     image: ghcr.io/telekom-security/heralding:24.04.1
+    user: "0:0"
     volumes:
       - ${SAKURA_DATA_PATH}/heralding:/var/log/heralding
     tmpfs:
@@ -227,7 +232,7 @@ services:
     user: root
     volumes:
       - certs:/usr/share/metricbeat/certs
-      - ../elk/metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - ../../elk/metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
       - /proc:/hostfs/proc:ro
@@ -255,8 +260,8 @@ services:
     user: root
     volumes:
       - certs:/usr/share/logstash/certs
-      - ../elk/logstash/logstash_ingest_data/:/usr/share/logstash/ingest_data/
-      - ../elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ../../elk/logstash/logstash_ingest_data/:/usr/share/logstash/ingest_data/
+      - ../../elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
       - ${SAKURA_DATA_PATH}:/data
     ports:
       - "64305:9600"

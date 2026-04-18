@@ -1,3 +1,4 @@
+from mode.mode_manager import ModeManager
 from auth import auth_user
 from connector import connect_server
 from session import handler
@@ -8,6 +9,7 @@ import threading
 import paramiko
 import time
 import requests
+import sys
 
 logging.basicConfig(
   level=logging.WARNING,
@@ -22,6 +24,8 @@ PORT = 22
 HOST_KEY = paramiko.RSAKey(filename="/certs/ssh_host_rsa_key")
 COWRIE_VERSION = None
 
+mode_manager = ModeManager()
+
 class SSHProxyServer(paramiko.ServerInterface):
   def __init__(self, client_addr):
     self.event = threading.Event()
@@ -35,18 +39,25 @@ class SSHProxyServer(paramiko.ServerInterface):
     self.is_exec_request = False
     self.request_type = None
     self.exec_command = None
+    self.mode = mode_manager.get_mode()
 
   def check_auth_password(self, username: str, password: str) -> int:
     self.username = username
     self.password = password
 
-    try:
-      self.heralding_connector.record_login(username=username, password=password)
-    except Exception:
-      logger.exception("Failed to record login via heralding_connector")
+    if self.mode == "standalone":
+      try:
+        self.cowrie_connector.record_login(username=username, password=password)
+      except Exception:
+        logger.exception("Failed to record login via cowrie_connector (standalone mode)")
+    else:
+      try:
+        self.heralding_connector.record_login(username=username, password=password)
+      except Exception:
+        logger.exception("Failed to record login via heralding_connector")
 
     auth_success = self.authenticator.authenticate(username, password)
-    log_event.log_auth_event(self.client_addr, HOST, PORT, username, password, auth_success)
+    log_event.log_auth_event(self.client_addr, HOST, PORT, username, password, auth_success, self.mode)
 
     return paramiko.AUTH_SUCCESSFUL if auth_success else paramiko.AUTH_FAILED
 
@@ -84,9 +95,11 @@ class SSHProxyServer(paramiko.ServerInterface):
       except Exception:
         src_ip, src_port = "unknown", 0
 
-      log_event.log_command_event(src_ip, src_port, self.username, command_str, "~")
+      log_event.log_command_event(src_ip, src_port, self.username, command_str, "~", self.mode)
 
-      if not self.cowrie_launched:
+      if self.mode in ("static", "standalone"):
+        self.cowrie_launched = True
+      elif not self.cowrie_launched:
         try:
           res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
           if res.status_code == 200:
@@ -125,10 +138,20 @@ class SSHProxyServer(paramiko.ServerInterface):
       resource_manager.close_channel(channel)
 
   def _trigger_cowrie(self):
+    if self.mode == "static":
+      logger.info("static mode: cowrie already running")
+      self.cowrie_launched = True
+      return
+
+    if self.mode == "standalone":
+      logger.info("standalone mode: cowrie already running")
+      self.cowrie_launched = True
+      return
+
     try:
       res = requests.post("http://launcher:5000/trigger/cowrie", timeout=5)
       if res.status_code == 200:
-        logger.info("Cowrie started in auth stage")
+        logger.info("Cowrie started in auth stage (dynamic/rotate mode)")
         self.cowrie_launched = True
       else:
         logger.error("Failed to start cowrie at auth (HTTP %s)", res.status_code)
@@ -184,7 +207,7 @@ def _handle_client(client, addr):
 
     threading.Thread(
       target=handler.handle_session,
-      args=(chan, username, password, addr, start_time, server.cowrie_launched, server.cowrie_connector),
+      args=(chan, username, password, addr, start_time, server.cowrie_launched, server.cowrie_connector, server.mode),
       kwargs={'transport': transport, 'client_socket': client},
       daemon=True
     ).start()
@@ -234,4 +257,6 @@ def start_proxy():
       logger.exception("Failed to close listening socket")
 
 if __name__ == "__main__":
+  sys.path.insert(0, '/app')
+
   start_proxy()

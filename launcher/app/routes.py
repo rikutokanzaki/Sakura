@@ -7,6 +7,7 @@ import logging
 import os
 import socket
 import json
+import time
 
 bp = Blueprint('main', __name__)
 
@@ -49,6 +50,84 @@ for addr in allowed_networks:
 @bp.route('/')
 def index():
   return render_template("index.html")
+
+def _read_rotate_interval() -> int:
+  try:
+    interval = int(os.getenv("ROTATE_INTERVAL", "1020"))
+    return interval if interval > 0 else 1020
+  except (TypeError, ValueError):
+    return 1020
+
+def _resolve_effective_mode() -> str:
+  dispatcher_mode = current_app.config.get('dispatcher_mode', 'dynamic')
+  if dispatcher_mode != "rotate":
+    return dispatcher_mode
+
+  interval = _read_rotate_interval()
+  modes = ["dynamic", "static", "standalone"]
+  slot = int(time.time() // interval) % len(modes)
+  return modes[slot]
+
+def _should_persist_session() -> bool:
+  return _resolve_effective_mode() == "static"
+
+def _available_mode_services() -> set[str]:
+  selected_profile = os.getenv("SELECTED_PROFILE", "standard").lower()
+  if selected_profile == "http":
+    return {"heralding", "wordpot", "h0neytr4p"}
+  if selected_profile == "ssh":
+    return {"heralding", "cowrie"}
+  return {"heralding", "wordpot", "h0neytr4p", "cowrie"}
+
+def _start_persistent_service(service_name: str) -> None:
+  session_manager.update_session(service_name, persist=True)
+  with session_manager._services[service_name].stop_lock:
+    if not docker_manager.is_service_running(service_name):
+      docker_manager.start_services([service_name])
+
+def _stop_service_if_running(service_name: str) -> None:
+  session_manager.ensure_session(service_name, persist=False)
+  with session_manager._services[service_name].stop_lock:
+    if docker_manager.is_service_running(service_name):
+      docker_manager.stop_services([service_name])
+
+@bp.route('/current-mode', methods=['GET'])
+def current_mode():
+  return _resolve_effective_mode(), 200
+
+@bp.route('/apply-mode/<mode>', methods=['POST'])
+def apply_mode(mode: str):
+  target_mode = mode.strip().lower()
+  if target_mode not in {"dynamic", "static", "standalone"}:
+    return jsonify({"error": "invalid mode"}), 400
+
+  services = _available_mode_services()
+
+  try:
+    if target_mode == "dynamic":
+      if "heralding" in services:
+        _start_persistent_service("heralding")
+      for service in ["wordpot", "h0neytr4p", "cowrie"]:
+        if service in services:
+          _stop_service_if_running(service)
+
+    elif target_mode == "static":
+      for service in ["heralding", "wordpot", "h0neytr4p", "cowrie"]:
+        if service in services:
+          _start_persistent_service(service)
+
+    else:
+      for service in ["wordpot", "heralding"]:
+        if service in services:
+          _stop_service_if_running(service)
+      for service in ["h0neytr4p", "cowrie"]:
+        if service in services:
+          _start_persistent_service(service)
+
+    return jsonify({"mode": target_mode, "applied": True}), 200
+  except Exception as e:
+    logger.exception("Failed to apply mode %s: %s", target_mode, e)
+    return jsonify({"mode": target_mode, "applied": False}), 500
 
 @bp.route('/api/logs/openresty', methods=['GET'])
 def get_openresty_logs():
@@ -157,62 +236,68 @@ def get_cowrie_logs():
 
 @bp.route('/trigger/heralding', methods=['POST'])
 def trigger_heralding():
-  session_manager.update_session("heralding")
+  persist = _should_persist_session()
+  session_manager.update_session("heralding", persist=persist)
 
   with session_manager._services["heralding"].stop_lock:
     if not docker_manager.is_service_running("heralding"):
       docker_manager.start_services(["heralding"])
-    session_manager.update_session("heralding")
+    session_manager.update_session("heralding", persist=persist)
 
   return "HTTP Honeypot Triggered", 200
 
 @bp.route('/trigger/wordpot', methods=['POST'])
 def trigger_wordpot():
-  session_manager.update_session("wordpot")
+  persist = _should_persist_session()
+  session_manager.update_session("wordpot", persist=persist)
 
   with session_manager._services["wordpot"].stop_lock:
     if not docker_manager.is_service_running("wordpot"):
       docker_manager.start_services(["wordpot"])
-    session_manager.update_session("wordpot")
+    session_manager.update_session("wordpot", persist=persist)
 
   return "HTTP Honeypot Triggered", 200
 
 @bp.route('/trigger/h0neytr4p', methods=['POST'])
 def trigger_h0neytr4p():
-  session_manager.update_session("h0neytr4p")
+  persist = _should_persist_session()
+  session_manager.update_session("h0neytr4p", persist=persist)
 
   with session_manager._services["h0neytr4p"].stop_lock:
     if not docker_manager.is_service_running("h0neytr4p"):
       docker_manager.start_services(["h0neytr4p"])
-    session_manager.update_session("h0neytr4p")
+    session_manager.update_session("h0neytr4p", persist=persist)
 
   return "HTTP Honeypot Triggered", 200
 
 @bp.route('/trigger/snare', methods=['POST'])
 def trigger_snare():
-  session_manager.update_session("snare")
+  persist = _should_persist_session()
+  session_manager.update_session("snare", persist=persist)
 
   with session_manager._services["snare"].stop_lock:
     if not docker_manager.is_service_running("snare"):
       docker_manager.start_services(["snare","tanner_redis", "tanner_phpox", "tanner_api", "tanner"])
-    session_manager.update_session("snare")
+    session_manager.update_session("snare", persist=persist)
 
   return "HTTP Honeypot Triggered", 200
 
 @bp.route('/trigger/cowrie', methods=['POST'])
 def trigger_cowrie():
-  session_manager.update_session("cowrie")
+  persist = _should_persist_session()
+  session_manager.update_session("cowrie", persist=persist)
 
   with session_manager._services["cowrie"].stop_lock:
     if not docker_manager.is_service_running("cowrie"):
       docker_manager.start_services(["cowrie"])
-    session_manager.update_session("cowrie")
+    session_manager.update_session("cowrie", persist=persist)
 
   return "SSH Honeypot Triggered", 200
 
 @bp.route('/session/update/cowrie', methods=['POST'])
 def update_cowrie_session():
-  session_manager.update_session("cowrie")
+  persist = _should_persist_session()
+  session_manager.update_session("cowrie", persist=persist)
   return "Updated cowrie session", 200
 
 def _ensure_session(service_name: str, persist: bool = False):

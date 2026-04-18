@@ -1,7 +1,7 @@
 import json
 import datetime
 
-def log_auth_event(addr, dest_ip, dest_port, username, password, success):
+def log_auth_event(addr, dest_ip, dest_port, username, password, success, mode="unknown"):
   log = {
     "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     "type": "Paramiko",
@@ -13,38 +13,39 @@ def log_auth_event(addr, dest_ip, dest_port, username, password, success):
     "username": username,
     "password": password,
     "protocol": "ssh",
-    "success": success
+    "success": success,
+    "mode": mode
   }
 
   with open("/var/log/paramiko/paramiko.log", "a") as f:
     f.write(json.dumps(log) + "\n")
 
-def log_command_event(src_ip, src_port, username, command, cwd):
+def log_command_event(src_ip, src_port, username, command, cwd, mode="unknown"):
   log = {
     "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     "type": "Paramiko",
     "eventid": "paramiko.command.input",
     "src_ip": src_ip,
     "src_port": src_port,
-    "username": username,
     "command": command,
     "cwd": cwd,
-    "protocol": "ssh"
+    "protocol": "ssh",
+    "mode": mode
   }
   with open("/var/log/paramiko/paramiko.log", "a") as f:
     f.write(json.dumps(log) + "\n")
 
-def log_session_close(src_ip, src_port, username, duration, message):
+def log_session_close(src_ip, src_port, username, duration, message, mode="unknown"):
   log = {
     "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     "type": "Paramiko",
     "eventid": "paramiko.session.close",
     "src_ip": src_ip,
     "src_port": src_port,
-    "username": username,
     "duration": f"{round(duration, 2)}s",
     "message": message,
-    "protocol": "ssh"
+    "protocol": "ssh",
+    "mode": mode
   }
   with open("/var/log/paramiko/paramiko.log", "a") as f:
     f.write(json.dumps(log) + "\n")

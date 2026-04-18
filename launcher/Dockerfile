@@ -1,8 +1,8 @@
-FROM python:3.10-slim
+FROM python:3.14-slim
 
 WORKDIR /src
 
-COPY . .
+COPY launcher/ /src/
 
 RUN pip install -r requirements.txt
 ENV PYTHONUNBUFFERED=1
