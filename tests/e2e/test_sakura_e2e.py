@@ -12,8 +12,8 @@ LAUNCHER_URL = "http://launcher:5000"
 OPENRESTY_URL = "http://openresty"
 SSH_HOST = "paramiko"
 SSH_PORT = 22
-SSH_USERNAME = "root"
-SSH_PASSWORD = "root"
+SSH_USERNAME = "test-user"
+SSH_PASSWORD = "somepassword"
 OPENRESTY_LOG = Path("/logs/openresty/access.log")
 
 
