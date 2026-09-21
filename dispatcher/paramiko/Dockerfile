@@ -11,7 +11,7 @@ WORKDIR /app
 
 COPY dispatcher/paramiko/ /app/
 
-RUN pip install -r requirements.txt
+RUN pip install .
 ENV PYTHONUNBUFFERED=1
 
 CMD ["python", "./src/main.py"]

@@ -5,7 +5,7 @@ import socket
 import time
 
 MAX_WAIT_SECONDS = 10
-client = docker.from_env()
+client = None
 
 LINKED_SERVICES = {
   "snare": ["snare", "tanner_redis", "tanner_phpox", "tanner_api", "tanner"],
@@ -19,9 +19,16 @@ WAIT_CONFIG = {
 logger = logging.getLogger(__name__)
 
 
+def get_client():
+  global client
+  if client is None:
+    client = docker.from_env()
+  return client
+
+
 def is_service_running(service_name):
   running_services = []
-  for container in client.containers.list():
+  for container in get_client().containers.list():
     labels = container.labels
     service = labels.get("com.docker.compose.service")
     if service and container.status == "running":
@@ -64,7 +71,7 @@ def _wait_service_ready(service_name):
   timeout = cfg.get("timeout", 30)
 
   try:
-    container = client.containers.get(service_name)
+    container = get_client().containers.get(service_name)
   except Exception as e:
     logger.warning("Container %s not found: %s", service_name, e)
     return
@@ -104,7 +111,7 @@ def stop_services(service_names):
       continue
 
     logger.info("Stopping %s...", name)
-    container = client.containers.get(name)
+    container = get_client().containers.get(name)
     container.stop()
 
     start_time = time.time()
@@ -128,7 +135,7 @@ def start_services(service_names):
       continue
 
     logger.info("Starting %s...", name)
-    container = client.containers.get(name)
+    container = get_client().containers.get(name)
     container.start()
 
     start_time = time.time()

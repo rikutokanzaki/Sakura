@@ -1,111 +1,106 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/static/style.css">
-  <title>Sakura launcher</title>
-</head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <title>Blossom launcher</title>
+  </head>
 
-<body>
-  <div class="titleSection">
-    <h1 class="title">Sakura launcher</h1>
-  </div>
+  <body>
+    <div class="titleSection">
+      <h1 class="title">Blossom launcher</h1>
+    </div>
 
-  <div class="launchHoneypot">
-    <select class="dropdown" name="honeypots" id="honeypotSelect">
-      <option value="h0neytr4p">H0neytr4p</option>
-      <option value="cowrie">Cowrie</option>
-    </select>
-
-    <button class="launchButton">Launch</button>
-  </div>
-
-  <div class="honeypotLogs" id="paramiko">
-    <h2 class="honeypotName">Paramiko</h2>
-    <div class="logControls">
-      <label for="logCountSelectParamiko">Display:</label>
-      <select class="dropdown" id="logCountSelectParamiko">
-        <option value="10">10</option>
-        <option value="20">20</option>
-        <option value="50">50</option>
+    <div class="launchHoneypot">
+      <select class="dropdown" name="honeypots" id="honeypotSelect">
+        <option value="h0neytr4p">H0neytr4p</option>
+        <option value="cowrie">Cowrie</option>
       </select>
+
+      <button class="launchButton">Launch</button>
     </div>
 
-    <div class="table-wrap">
-      <table class="logTable" id="paramikoTable">
-      </table>
-    </div>
-  </div>
+    <div class="honeypotLogs" id="paramiko">
+      <h2 class="honeypotName">Paramiko</h2>
+      <div class="logControls">
+        <label for="logCountSelectParamiko">Display:</label>
+        <select class="dropdown" id="logCountSelectParamiko">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </div>
 
-  <div class="honeypotLogs" id="heralding">
-    <h2 class="honeypotName">Heralding</h2>
-    <div class="logControls">
-      <label for="logCountSelectHeralding">Display:</label>
-      <select class="dropdown" id="logCountSelectHeralding">
-        <option value="10">10</option>
-        <option value="20">20</option>
-        <option value="50">50</option>
-      </select>
-    </div>
-
-    <div class="table-wrap">
-      <table class="logTable" id="heraldingTable">
-      </table>
-    </div>
-  </div>
-
-  <div class="honeypotLogs" id="wordpot">
-    <h2 class="honeypotName">Wordpot</h2>
-    <div class="logControls">
-      <label for="logCountSelectWordpot">Display:</label>
-      <select class="dropdown" id="logCountSelectWordpot">
-        <option value="10">10</option>
-        <option value="20">20</option>
-        <option value="50">50</option>
-      </select>
+      <div class="table-wrap">
+        <table class="logTable" id="paramikoTable"></table>
+      </div>
     </div>
 
-    <div class="table-wrap">
-      <table class="logTable" id="wordpotTable">
-      </table>
-    </div>
-  </div>
+    <div class="honeypotLogs" id="heralding">
+      <h2 class="honeypotName">Heralding</h2>
+      <div class="logControls">
+        <label for="logCountSelectHeralding">Display:</label>
+        <select class="dropdown" id="logCountSelectHeralding">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </div>
 
-  <div class="honeypotLogs" id="h0neytr4p">
-    <h2 class="honeypotName">H0neytr4p</h2>
-    <div class="logControls">
-      <label for="logCountSelectH0neytr4p">Display:</label>
-      <select class="dropdown" id="logCountSelectH0neytr4p">
-        <option value="10">10</option>
-        <option value="20">20</option>
-        <option value="50">50</option>
-      </select>
-    </div>
-
-    <div class="table-wrap">
-      <table class="logTable" id="h0neytr4pTable">
-      </table>
-    </div>
-  </div>
-
-  <div class="honeypotLogs" id="cowrie">
-    <h2 class="honeypotName">Cowrie</h2>
-    <div class="logControls">
-      <label for="logCountSelectCowrie">Display:</label>
-      <select class="dropdown" id="logCountSelectCowrie">
-        <option value="10">10</option>
-        <option value="20">20</option>
-        <option value="50">50</option>
-      </select>
+      <div class="table-wrap">
+        <table class="logTable" id="heraldingTable"></table>
+      </div>
     </div>
 
-    <div class="table-wrap">
-      <table class="logTable" id="cowrieTable">
-      </table>
-    </div>
-  </div>
+    <div class="honeypotLogs" id="wordpot">
+      <h2 class="honeypotName">Wordpot</h2>
+      <div class="logControls">
+        <label for="logCountSelectWordpot">Display:</label>
+        <select class="dropdown" id="logCountSelectWordpot">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </div>
 
-  <script src="/static/main.js"></script>
-</body>
+      <div class="table-wrap">
+        <table class="logTable" id="wordpotTable"></table>
+      </div>
+    </div>
+
+    <div class="honeypotLogs" id="h0neytr4p">
+      <h2 class="honeypotName">H0neytr4p</h2>
+      <div class="logControls">
+        <label for="logCountSelectH0neytr4p">Display:</label>
+        <select class="dropdown" id="logCountSelectH0neytr4p">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="logTable" id="h0neytr4pTable"></table>
+      </div>
+    </div>
+
+    <div class="honeypotLogs" id="cowrie">
+      <h2 class="honeypotName">Cowrie</h2>
+      <div class="logControls">
+        <label for="logCountSelectCowrie">Display:</label>
+        <select class="dropdown" id="logCountSelectCowrie">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="logTable" id="cowrieTable"></table>
+      </div>
+    </div>
+
+    <script src="/static/main.js"></script>
+  </body>
 </html>

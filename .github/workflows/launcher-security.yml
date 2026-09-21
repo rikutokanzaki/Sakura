@@ -1,0 +1,37 @@
+name: Security audit(launcher)
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: launcher
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            launcher
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "launcher/.python-version"
+
+      - name: Install pip-audit
+        run: |
+          python -m pip install .
+          python -m pip install pip-audit
+
+      - name: Audit Python dependencies
+        run: pip-audit
