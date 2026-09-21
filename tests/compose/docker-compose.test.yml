@@ -71,7 +71,9 @@ services:
   wordpot:
     container_name: wordpot
     image: ghcr.io/telekom-security/wordpot:24.04.1
-    user: "0:0"
+    user: "2000:2000"
+    tmpfs:
+      - /opt/wordpot/logs:uid=2000,gid=2000,mode=755
     restart: always
 
   h0neytr4p:
