@@ -73,10 +73,16 @@ services:
   wordpot:
     container_name: wordpot
     image: ghcr.io/telekom-security/wordpot:24.04.1
+    volumes:
+      - wordpot-logs:/opt/wordpot/logs
 
   h0neytr4p:
     container_name: h0neytr4p
     image: ghcr.io/telekom-security/h0neytr4p:24.04.1
+    user: "0:0"
+    volumes:
+      - h0neytr4p-logs:/opt/h0neytr4p/log
+      - h0neytr4p-payloads:/data/h0neytr4p/payloads
 
   e2e:
     build:
@@ -94,3 +100,6 @@ volumes:
   paramiko-logs:
   openresty-logs:
   test-data:
+  wordpot-logs:
+  h0neytr4p-logs:
+  h0neytr4p-payloads:
