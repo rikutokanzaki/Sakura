@@ -23,13 +23,20 @@ jobs:
         run: |
           compose_file=tests/compose/docker-compose.test.yml
           docker compose --file "$compose_file" up --build --detach
-          e2e_container="$(docker compose --file "$compose_file" ps --quiet e2e)"
+          e2e_container="$(docker compose --file "$compose_file" ps --all --quiet e2e)"
+          if [ -z "$e2e_container" ]; then
+            echo "The e2e container was not created."
+            docker compose --file "$compose_file" ps --all
+            exit 1
+          fi
 
           while [ "$(docker inspect --format '{{.State.Status}}' "$e2e_container")" != "exited" ]; do
             sleep 2
           done
 
-          exit "$(docker inspect --format '{{.State.ExitCode}}' "$e2e_container")"
+          exit_code="$(docker inspect --format '{{.State.ExitCode}}' "$e2e_container")"
+          docker compose --file "$compose_file" logs --no-color e2e
+          exit "$exit_code"
 
       - name: Collect E2E logs
         if: always()
