@@ -34,6 +34,8 @@ services:
       ROTATE_INTERVAL: 2
       SELECTED_PROFILE: standard
       SESSION_TIMEOUT: 3
+    volumes:
+      - openresty-logs:/var/log/nginx
 
   launcher:
     container_name: launcher
@@ -97,3 +99,8 @@ services:
       - paramiko
       - openresty
       - launcher
+    volumes:
+      - openresty-logs:/logs/openresty:ro
+
+volumes:
+  openresty-logs:
