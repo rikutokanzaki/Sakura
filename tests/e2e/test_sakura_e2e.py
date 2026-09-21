@@ -12,9 +12,9 @@ LAUNCHER_URL = "http://launcher:5000"
 OPENRESTY_URL = "http://openresty"
 SSH_HOST = "paramiko"
 SSH_PORT = 22
-SSH_USERNAME = "root"
-SSH_PASSWORD = "root"
-OPENRESTY_LOG = Path("/logs/openresty/access.log")
+SSH_USERNAME = "test-user"
+SSH_PASSWORD = "somepassword"
+PARAMIKO_LOG = Path("/logs/paramiko/paramiko.log")
 
 
 def wait_for_http(url: str, timeout: float = 60) -> None:
@@ -30,17 +30,17 @@ def wait_for_http(url: str, timeout: float = 60) -> None:
   pytest.fail(f"Timed out waiting for {url}")
 
 
-def read_dispatcher_modes() -> set[str]:
-  if not OPENRESTY_LOG.exists():
+def read_paramiko_modes() -> set[str]:
+  if not PARAMIKO_LOG.exists():
     return set()
 
   modes = set()
-  for line in OPENRESTY_LOG.read_text(encoding="utf-8", errors="replace").splitlines():
+  for line in PARAMIKO_LOG.read_text(encoding="utf-8", errors="replace").splitlines():
     try:
       record = json.loads(line)
     except json.JSONDecodeError:
       continue
-    mode = record.get("dispatcher_mode")
+    mode = record.get("mode")
     if mode:
       modes.add(mode)
   return modes
@@ -75,13 +75,27 @@ def test_launcher_applies_all_modes():
 
 
 def test_rotate_mode_reaches_all_modes():
-  wait_for_http(f"{OPENRESTY_URL}/")
-
   deadline = time.monotonic() + 12
   observed = set()
   while time.monotonic() < deadline:
-    requests.get(f"{OPENRESTY_URL}/rotation-probe", timeout=5)
-    observed.update(read_dispatcher_modes())
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+      client.connect(
+        SSH_HOST,
+        port=SSH_PORT,
+        username=SSH_USERNAME,
+        password=SSH_PASSWORD,
+        timeout=5,
+        banner_timeout=5,
+        auth_timeout=5,
+      )
+    except (paramiko.SSHException, OSError):
+      pass
+    finally:
+      client.close()
+
+    observed.update(read_paramiko_modes())
     if {"dynamic", "static", "standalone"}.issubset(observed):
       break
     time.sleep(0.5)

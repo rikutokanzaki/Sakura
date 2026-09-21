@@ -22,6 +22,10 @@ services:
     build:
       context: ../..
       dockerfile: dispatcher/openresty/Dockerfile
+    command:
+      - sh
+      - -c
+      - mkdir -p /var/log/nginx && touch /var/log/nginx/access.log && exec openresty -g 'daemon off;'
     depends_on:
       - launcher
       - heralding
@@ -40,6 +44,17 @@ services:
     build:
       context: ../..
       dockerfile: launcher/Dockerfile
+    command:
+      - gunicorn
+      - --workers
+      - "4"
+      - --timeout
+      - "120"
+      - --log-level
+      - info
+      - --bind
+      - 0.0.0.0:5000
+      - launch:app
     depends_on:
       - heralding
       - cowrie
@@ -50,7 +65,6 @@ services:
       ALLOWED_NETWORKS: 0.0.0.0/0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - test-data:/data
 
   heralding:
     container_name: heralding
@@ -59,24 +73,36 @@ services:
     tmpfs:
       - /tmp/heralding:uid=2000,gid=2000
       - /var/log/heralding
+    restart: unless-stopped
+    read_only: true
 
   cowrie:
     container_name: cowrie
     image: cowrie/cowrie
     volumes:
-      - ../../layers/core/config/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt:ro
+      - ../fixtures/backends/cowrie/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt
     environment:
-      PYTHONUNBUFFERED: "1"
-      COWRIE_TTYLOG_ENABLED: "yes"
-      COWRIE_SSH_PORT: "2222"
+      - PYTHONUNBUFFERED=1
+      - COWRIE_TTYLOG_ENABLED=yes
+      - COWRIE_SSH_PORT=2222
+    restart: unless-stopped
 
   wordpot:
     container_name: wordpot
     image: ghcr.io/telekom-security/wordpot:24.04.1
+    user: "2000:2000"
+    tmpfs:
+      - /opt/wordpot/logs:uid=2000,gid=2000,mode=755
+    restart: unless-stopped
 
   h0neytr4p:
     container_name: h0neytr4p
     image: ghcr.io/telekom-security/h0neytr4p:24.04.1
+    user: "2000:2000"
+    tmpfs:
+      - /opt/h0neytr4p/log:uid=2000,gid=2000,mode=755
+      - /data/h0neytr4p/payloads:uid=2000,gid=2000,mode=755
+    restart: unless-stopped
 
   e2e:
     build:
@@ -93,4 +119,3 @@ services:
 volumes:
   paramiko-logs:
   openresty-logs:
-  test-data:

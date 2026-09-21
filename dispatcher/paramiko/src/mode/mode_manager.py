@@ -27,7 +27,13 @@ class ModeManager:
     self._configured_mode = self._normalize_mode(os.getenv("DISPATCHER_MODE", "dynamic"))
     self._selected_profile = (os.getenv("SELECTED_PROFILE", "standard") or "standard").lower()
     self._rotate_interval = self._read_rotate_interval()
-    self._current_mode = self._resolve_mode(time.time())
+    now = time.time()
+    self._current_mode = self._resolve_mode(now)
+    self._next_rotation_at = (
+      now + self._rotate_interval
+      if self._configured_mode == "rotate"
+      else None
+    )
     logger.info("ModeManager initialized with mode: %s", self._current_mode)
 
     self._start_mode_apply_thread_if_required()
@@ -46,6 +52,25 @@ class ModeManager:
     modes = ["dynamic", "static", "standalone"]
     slot = int(now // self._rotate_interval) % len(modes)
     return modes[slot]
+
+  def _next_mode(self, mode: str) -> str:
+    modes = ["dynamic", "static", "standalone"]
+    return modes[(modes.index(mode) + 1) % len(modes)]
+
+  def _advance_rotation_if_due(self, now: float) -> None:
+    if self._configured_mode != "rotate" or self._next_rotation_at is None:
+      return
+
+    while now >= self._next_rotation_at:
+      old_mode = self._current_mode
+      self._current_mode = self._next_mode(self._current_mode)
+
+      # Advance from the scheduled timestamp, not from the time this work
+      # completes, so launcher/container work cannot accumulate drift.
+      self._next_rotation_at += self._rotate_interval
+
+      logger.info("[mode-rotate] %s -> %s", old_mode, self._current_mode)
+      self._apply_mode_to_launcher(self._current_mode)
 
   def _normalize_mode(self, mode: str) -> str:
     if not mode:
@@ -75,12 +100,7 @@ class ModeManager:
       try:
         time.sleep(1)
         with self._mode_lock:
-          resolved_mode = self._resolve_mode(time.time())
-          if resolved_mode != self._current_mode:
-            old_mode = self._current_mode
-            self._current_mode = resolved_mode
-            logger.info("[mode-rotate] %s -> %s", old_mode, resolved_mode)
-            self._apply_mode_to_launcher(resolved_mode)
+          self._advance_rotation_if_due(time.time())
       except Exception as e:
         logger.exception("Error in mode apply loop: %s", e)
 
@@ -95,10 +115,7 @@ class ModeManager:
 
   def get_mode(self) -> str:
     with self._mode_lock:
-      resolved_mode = self._resolve_mode(time.time())
-      if resolved_mode != self._current_mode:
-        logger.info("[mode-rotate] %s -> %s", self._current_mode, resolved_mode)
-        self._current_mode = resolved_mode
+      self._advance_rotation_if_due(time.time())
       return self._current_mode
 
   def set_mode(self, mode: str) -> None:
