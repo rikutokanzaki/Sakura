@@ -20,6 +20,10 @@ services:
     build:
       context: ../..
       dockerfile: dispatcher/openresty/Dockerfile
+    command:
+      - sh
+      - -c
+      - mkdir -p /var/log/nginx && touch /var/log/nginx/access.log && exec openresty -g 'daemon off;'
     depends_on:
       - launcher
       - heralding
