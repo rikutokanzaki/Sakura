@@ -14,6 +14,8 @@ services:
       SELECTED_PROFILE: standard
       SESSION_TIMEOUT: 3
       HOST_NAME: e2e
+    volumes:
+      - paramiko-logs:/var/log/paramiko
 
   openresty:
     container_name: openresty
@@ -60,7 +62,7 @@ services:
     tmpfs:
       - /tmp/heralding:uid=2000,gid=2000
       - /var/log/heralding
-    restart: always
+    restart: unless-stopped
     read_only: true
 
   cowrie:
@@ -72,7 +74,7 @@ services:
       - PYTHONUNBUFFERED=1
       - COWRIE_TTYLOG_ENABLED=yes
       - COWRIE_SSH_PORT=2222
-    restart: always
+    restart: unless-stopped
 
   wordpot:
     container_name: wordpot
@@ -80,7 +82,7 @@ services:
     user: "2000:2000"
     tmpfs:
       - /opt/wordpot/logs:uid=2000,gid=2000,mode=755
-    restart: always
+    restart: unless-stopped
 
   h0neytr4p:
     container_name: h0neytr4p
@@ -89,7 +91,7 @@ services:
     tmpfs:
       - /opt/h0neytr4p/log:uid=2000,gid=2000,mode=755
       - /data/h0neytr4p/payloads:uid=2000,gid=2000,mode=755
-    restart: always
+    restart: unless-stopped
 
   e2e:
     build:
@@ -100,7 +102,9 @@ services:
       - openresty
       - launcher
     volumes:
+      - paramiko-logs:/logs/paramiko:ro
       - openresty-logs:/logs/openresty:ro
 
 volumes:
+  paramiko-logs:
   openresty-logs:
