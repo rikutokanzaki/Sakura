@@ -1,0 +1,96 @@
+services:
+  paramiko:
+    container_name: paramiko
+    build:
+      context: ../..
+      dockerfile: dispatcher/paramiko/Dockerfile
+    depends_on:
+      - launcher
+      - heralding
+      - cowrie
+    environment:
+      DISPATCHER_MODE: rotate
+      ROTATE_INTERVAL: 2
+      SELECTED_PROFILE: standard
+      SESSION_TIMEOUT: 3
+      HOST_NAME: e2e
+    volumes:
+      - paramiko-logs:/var/log/paramiko
+
+  openresty:
+    container_name: openresty
+    build:
+      context: ../..
+      dockerfile: dispatcher/openresty/Dockerfile
+    depends_on:
+      - launcher
+      - heralding
+      - wordpot
+      - h0neytr4p
+    environment:
+      DISPATCHER_MODE: rotate
+      ROTATE_INTERVAL: 2
+      SELECTED_PROFILE: standard
+      SESSION_TIMEOUT: 3
+    volumes:
+      - openresty-logs:/var/log/nginx
+
+  launcher:
+    container_name: launcher
+    build:
+      context: ../..
+      dockerfile: launcher/Dockerfile
+    depends_on:
+      - heralding
+      - cowrie
+      - wordpot
+      - h0neytr4p
+    environment:
+      SESSION_TIMEOUT: 3
+      ALLOWED_NETWORKS: 0.0.0.0/0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - test-data:/data
+
+  heralding:
+    container_name: heralding
+    image: ghcr.io/telekom-security/heralding:24.04.1
+    user: "0:0"
+    tmpfs:
+      - /tmp/heralding:uid=2000,gid=2000
+      - /var/log/heralding
+
+  cowrie:
+    container_name: cowrie
+    image: cowrie/cowrie
+    volumes:
+      - ../../layers/core/config/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt:ro
+    environment:
+      PYTHONUNBUFFERED: "1"
+      COWRIE_TTYLOG_ENABLED: "yes"
+      COWRIE_SSH_PORT: "2222"
+
+  wordpot:
+    container_name: wordpot
+    image: ghcr.io/telekom-security/wordpot:24.04.1
+
+  h0neytr4p:
+    container_name: h0neytr4p
+    image: ghcr.io/telekom-security/h0neytr4p:24.04.1
+
+  e2e:
+    build:
+      context: ../..
+      dockerfile: tests/e2e/Dockerfile
+    depends_on:
+      - paramiko
+      - openresty
+      - launcher
+    volumes:
+      - paramiko-logs:/logs/paramiko:ro
+      - openresty-logs:/logs/openresty:ro
+
+volumes:
+  paramiko-logs:
+  openresty-logs:
+  test-data:

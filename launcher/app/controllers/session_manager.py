@@ -1,9 +1,13 @@
 from app.controllers import docker_manager
 import logging
+import os
 import threading
 import time
 
-SESSION_TIMEOUT = 300
+try:
+  SESSION_TIMEOUT = max(1, int(os.getenv("SESSION_TIMEOUT", "300")))
+except (TypeError, ValueError):
+  SESSION_TIMEOUT = 300
 
 _services = {}
 _services_lock = threading.Lock()
