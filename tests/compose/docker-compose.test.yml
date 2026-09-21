@@ -44,6 +44,17 @@ services:
     build:
       context: ../..
       dockerfile: launcher/Dockerfile
+    command:
+      - gunicorn
+      - --workers
+      - "4"
+      - --timeout
+      - "120"
+      - --log-level
+      - info
+      - --bind
+      - 0.0.0.0:5000
+      - launch:app
     depends_on:
       - heralding
       - cowrie
