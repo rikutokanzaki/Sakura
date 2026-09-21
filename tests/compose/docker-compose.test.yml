@@ -14,8 +14,6 @@ services:
       SELECTED_PROFILE: standard
       SESSION_TIMEOUT: 3
       HOST_NAME: e2e
-    volumes:
-      - paramiko-logs:/var/log/paramiko
 
   openresty:
     container_name: openresty
@@ -32,8 +30,6 @@ services:
       ROTATE_INTERVAL: 2
       SELECTED_PROFILE: standard
       SESSION_TIMEOUT: 3
-    volumes:
-      - openresty-logs:/var/log/nginx
 
   launcher:
     container_name: launcher
@@ -50,7 +46,6 @@ services:
       ALLOWED_NETWORKS: 0.0.0.0/0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - test-data:/data
 
   heralding:
     container_name: heralding
@@ -59,23 +54,25 @@ services:
     tmpfs:
       - /tmp/heralding:uid=2000,gid=2000
       - /var/log/heralding
+    restart: always
+    read_only: true
 
   cowrie:
     container_name: cowrie
     image: cowrie/cowrie
     volumes:
-      - ../../layers/core/config/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt:ro
+      - ../fixtures/backends/cowrie/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt
     environment:
-      PYTHONUNBUFFERED: "1"
-      COWRIE_TTYLOG_ENABLED: "yes"
-      COWRIE_SSH_PORT: "2222"
+      - PYTHONUNBUFFERED=1
+      - COWRIE_TTYLOG_ENABLED=yes
+      - COWRIE_SSH_PORT=2222
+    restart: always
 
   wordpot:
     container_name: wordpot
     image: ghcr.io/telekom-security/wordpot:24.04.1
     user: "0:0"
-    volumes:
-      - wordpot-logs:/opt/wordpot/logs
+    restart: always
 
   h0neytr4p:
     container_name: h0neytr4p
@@ -84,6 +81,7 @@ services:
     tmpfs:
       - /opt/h0neytr4p/log:uid=2000,gid=2000,mode=755
       - /data/h0neytr4p/payloads:uid=2000,gid=2000,mode=755
+    restart: always
 
   e2e:
     build:
@@ -93,12 +91,3 @@ services:
       - paramiko
       - openresty
       - launcher
-    volumes:
-      - paramiko-logs:/logs/paramiko:ro
-      - openresty-logs:/logs/openresty:ro
-
-volumes:
-  paramiko-logs:
-  openresty-logs:
-  test-data:
-  wordpot-logs:
