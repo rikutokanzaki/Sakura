@@ -73,6 +73,7 @@ services:
   wordpot:
     container_name: wordpot
     image: ghcr.io/telekom-security/wordpot:24.04.1
+    user: "0:0"
     volumes:
       - wordpot-logs:/opt/wordpot/logs
 

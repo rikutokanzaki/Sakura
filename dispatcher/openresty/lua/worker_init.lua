@@ -87,5 +87,5 @@ local ok, err = ngx.timer.every(1, function()
   if selected_profile == "http" and changed_mode_or_err then
     apply_mode(changed_mode_or_err)
   end
-end
+  end)
 if not ok then ngx.log(ngx.ERR, "sync timer error: ", err) end

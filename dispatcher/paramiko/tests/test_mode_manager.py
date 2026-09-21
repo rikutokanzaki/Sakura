@@ -60,7 +60,7 @@ def test_rotation_catches_up_missed_scheduled_boundaries(monkeypatch):
 
   manager._advance_rotation_if_due(131)
 
-  assert manager._current_mode == "dynamic"
+  assert manager._current_mode == "static"
   assert manager._next_rotation_at == 140
   assert applied_modes == ["static", "standalone", "dynamic", "static"]
 
