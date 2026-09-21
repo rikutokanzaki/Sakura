@@ -13,9 +13,7 @@ def test_index_returns_launcher_page(client):
 
 
 def test_openresty_logs_are_flattened(client, monkeypatch):
-    log_data = json.dumps(
-        {"request": {"method": "GET"}, "tags": ["web", "json"]}
-    )
+    log_data = json.dumps({"request": {"method": "GET"}, "tags": ["web", "json"]})
     monkeypatch.setattr(builtins, "open", mock_open(read_data=log_data + "\n"))
 
     response = client.get("/api/logs/openresty")

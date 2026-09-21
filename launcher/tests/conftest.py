@@ -1,9 +1,7 @@
 import ipaddress
 
 import pytest
-
-from app import create_app
-from app import routes
+from app import create_app, routes
 
 
 @pytest.fixture
